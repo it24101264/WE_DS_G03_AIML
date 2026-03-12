@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, Alert, ScrollView, StyleSheet } from "react-native";
 import { api } from "../api";
 import { theme } from "../ui/theme";
+import ModuleSidebar from "../components/ModuleSidebar";
 
 function StatusBadge({ value }) {
   const status = String(value || "").toUpperCase();
@@ -88,126 +89,135 @@ export default function RepScreen({ user, onLogout }) {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
-      <View style={styles.heroCard}>
-        <View style={styles.bgOrbOne} />
-        <View style={styles.bgOrbTwo} />
+    <View style={styles.pageShell}>
+      <ModuleSidebar currentModule="study" />
+      <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
+        <View style={styles.heroCard}>
+          <View style={styles.bgOrbOne} />
+          <View style={styles.bgOrbTwo} />
 
-        <View style={styles.heroTopRow}>
-          <View style={styles.flexItem}>
-            <Text style={styles.title}>Batch Rep Dashboard</Text>
-            <Text style={styles.subtitle}>{user.email}</Text>
-          </View>
-          <Pressable style={styles.logoutBtn} onPress={onLogout}>
-            <Text style={styles.logoutBtnText}>Logout</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{groups.length}</Text>
-            <Text style={styles.statLabel}>Detected Clusters</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{draftSessions.length}</Text>
-            <Text style={styles.statLabel}>Draft Sessions</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Cluster Controls</Text>
-        <View style={styles.paramRow}>
-          <TextInput placeholder="minSize" placeholderTextColor={theme.colors.textMuted} value={minSize} onChangeText={setMinSize} style={styles.paramInput} keyboardType="number-pad" />
-          <TextInput placeholder="maxClusters" placeholderTextColor={theme.colors.textMuted} value={maxClusters} onChangeText={setMaxClusters} style={styles.paramInput} keyboardType="number-pad" />
-          <TextInput placeholder="topClusters" placeholderTextColor={theme.colors.textMuted} value={topClusters} onChangeText={setTopClusters} style={styles.paramInput} keyboardType="number-pad" />
-        </View>
-        <View style={styles.row}>
-          <Pressable style={[styles.secondaryBtn, loading && styles.btnDisabled]} onPress={loadGroups} disabled={loading}>
-            <Text style={styles.secondaryBtnText}>{loading ? "Loading..." : "Find Clusters"}</Text>
-          </Pressable>
-          <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={autoCreateSessions} disabled={loading}>
-            <Text style={styles.primaryBtnText}>{loading ? "Processing..." : "Auto Create"}</Text>
-          </Pressable>
-        </View>
-        {err ? <Text style={styles.error}>{err}</Text> : null}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Cluster Summary</Text>
-        <FlatList
-          data={groups}
-          keyExtractor={(item) => item.group_id || item.groupId}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.muted}>No clusters loaded.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>{item.group_id || item.groupId}</Text>
-                <Text style={styles.meta}>size {item.size}</Text>
-              </View>
-              <Text style={styles.itemText}>Topic: {item.topic || "General Discussion"}</Text>
-              <Text style={styles.muted}>Keywords: {(item.keywords || []).join(", ") || "N/A"}</Text>
+          <View style={styles.heroTopRow}>
+            <View style={styles.flexItem}>
+              <Text style={styles.title}>Batch Rep Dashboard</Text>
+              <Text style={styles.subtitle}>{user.email}</Text>
             </View>
-          )}
-        />
-      </View>
+            <Pressable style={styles.logoutBtn} onPress={onLogout}>
+              <Text style={styles.logoutBtnText}>Logout</Text>
+            </Pressable>
+          </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Draft Sessions</Text>
-        <FlatList
-          data={draftSessions}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.muted}>No draft sessions available.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>{item.topic}</Text>
-                <StatusBadge value={item.status} />
-              </View>
-              <Text style={styles.itemText}>{item.description}</Text>
-              <Text style={styles.muted}>Requests: {item.requestCount || (item.requestIds || []).length}</Text>
-
-              <TextInput
-                placeholder="Time slot (e.g. Tue 4PM)"
-                placeholderTextColor={theme.colors.textMuted}
-                value={slotBySession[item.id] || ""}
-                onChangeText={(value) => setSlotBySession((prev) => ({ ...prev, [item.id]: value }))}
-                style={styles.input}
-              />
-              <TextInput
-                placeholder="Location / mode"
-                placeholderTextColor={theme.colors.textMuted}
-                value={locationBySession[item.id] || ""}
-                onChangeText={(value) => setLocationBySession((prev) => ({ ...prev, [item.id]: value }))}
-                style={styles.input}
-              />
-
-              <View style={styles.row}>
-                <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={() => decide(item.id, "accept")} disabled={loading}>
-                  <Text style={styles.primaryBtnText}>Accept & Publish</Text>
-                </Pressable>
-                <Pressable style={[styles.rejectBtn, loading && styles.btnDisabled]} onPress={() => decide(item.id, "reject")} disabled={loading}>
-                  <Text style={styles.rejectBtnText}>Reject</Text>
-                </Pressable>
-              </View>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{groups.length}</Text>
+              <Text style={styles.statLabel}>Detected Clusters</Text>
             </View>
-          )}
-        />
-      </View>
-    </ScrollView>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{draftSessions.length}</Text>
+              <Text style={styles.statLabel}>Draft Sessions</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Cluster Controls</Text>
+          <View style={styles.paramRow}>
+            <TextInput placeholder="minSize" placeholderTextColor={theme.colors.textMuted} value={minSize} onChangeText={setMinSize} style={styles.paramInput} keyboardType="number-pad" />
+            <TextInput placeholder="maxClusters" placeholderTextColor={theme.colors.textMuted} value={maxClusters} onChangeText={setMaxClusters} style={styles.paramInput} keyboardType="number-pad" />
+            <TextInput placeholder="topClusters" placeholderTextColor={theme.colors.textMuted} value={topClusters} onChangeText={setTopClusters} style={styles.paramInput} keyboardType="number-pad" />
+          </View>
+          <View style={styles.row}>
+            <Pressable style={[styles.secondaryBtn, loading && styles.btnDisabled]} onPress={loadGroups} disabled={loading}>
+              <Text style={styles.secondaryBtnText}>{loading ? "Loading..." : "Find Clusters"}</Text>
+            </Pressable>
+            <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={autoCreateSessions} disabled={loading}>
+              <Text style={styles.primaryBtnText}>{loading ? "Processing..." : "Auto Create"}</Text>
+            </Pressable>
+          </View>
+          {err ? <Text style={styles.error}>{err}</Text> : null}
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Cluster Summary</Text>
+          <FlatList
+            data={groups}
+            keyExtractor={(item) => item.group_id || item.groupId}
+            scrollEnabled={false}
+            ListEmptyComponent={<Text style={styles.muted}>No clusters loaded.</Text>}
+            renderItem={({ item }) => (
+              <View style={styles.listItem}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.itemTitle}>{item.group_id || item.groupId}</Text>
+                  <Text style={styles.meta}>size {item.size}</Text>
+                </View>
+                <Text style={styles.itemText}>Topic: {item.topic || "General Discussion"}</Text>
+                <Text style={styles.muted}>Keywords: {(item.keywords || []).join(", ") || "N/A"}</Text>
+              </View>
+            )}
+          />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Draft Sessions</Text>
+          <FlatList
+            data={draftSessions}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ListEmptyComponent={<Text style={styles.muted}>No draft sessions available.</Text>}
+            renderItem={({ item }) => (
+              <View style={styles.listItem}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.itemTitle}>{item.topic}</Text>
+                  <StatusBadge value={item.status} />
+                </View>
+                <Text style={styles.itemText}>{item.description}</Text>
+                <Text style={styles.muted}>Requests: {item.requestCount || (item.requestIds || []).length}</Text>
+
+                <TextInput
+                  placeholder="Time slot (e.g. Tue 4PM)"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={slotBySession[item.id] || ""}
+                  onChangeText={(value) => setSlotBySession((prev) => ({ ...prev, [item.id]: value }))}
+                  style={styles.input}
+                />
+                <TextInput
+                  placeholder="Location / mode"
+                  placeholderTextColor={theme.colors.textMuted}
+                  value={locationBySession[item.id] || ""}
+                  onChangeText={(value) => setLocationBySession((prev) => ({ ...prev, [item.id]: value }))}
+                  style={styles.input}
+                />
+
+                <View style={styles.row}>
+                  <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={() => decide(item.id, "accept")} disabled={loading}>
+                    <Text style={styles.primaryBtnText}>Accept & Publish</Text>
+                  </Pressable>
+                  <Pressable style={[styles.rejectBtn, loading && styles.btnDisabled]} onPress={() => decide(item.id, "reject")} disabled={loading}>
+                    <Text style={styles.rejectBtnText}>Reject</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  pageShell: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+  },
   page: {
     flex: 1,
     backgroundColor: theme.colors.bg,
   },
   pageContent: {
-    padding: 16,
+    paddingTop: 18,
+    paddingRight: 16,
     paddingBottom: 28,
+    paddingLeft: 94,
     gap: 12,
   },
   heroCard: {

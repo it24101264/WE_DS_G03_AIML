@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, ScrollView, StyleSheet } from "react-native";
 import { api } from "../api";
 import { theme } from "../ui/theme";
+import ModuleSidebar from "../components/ModuleSidebar";
 
 function StatusBadge({ value }) {
   const status = String(value || "").toUpperCase();
@@ -97,161 +98,170 @@ export default function StudentScreen({ user, onLogout }) {
   }
 
   return (
-    <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
-      <View style={styles.heroCard}>
-        <View style={styles.bgOrbOne} />
-        <View style={styles.bgOrbTwo} />
+    <View style={styles.pageShell}>
+      <ModuleSidebar currentModule="study" />
+      <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
+        <View style={styles.heroCard}>
+          <View style={styles.bgOrbOne} />
+          <View style={styles.bgOrbTwo} />
 
-        <View style={styles.heroTopRow}>
-          <View style={styles.flexItem}>
-            <Text style={styles.title}>Student Dashboard</Text>
-            <Text style={styles.subtitle}>{user.email}</Text>
-          </View>
-          <Pressable style={styles.logoutBtn} onPress={onLogout}>
-            <Text style={styles.logoutBtnText}>Logout</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{mine.length}</Text>
-            <Text style={styles.statLabel}>My Requests</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{sessions.length}</Text>
-            <Text style={styles.statLabel}>Published Sessions</Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>New Support Request</Text>
-        <TextInput placeholder="Topic" placeholderTextColor={theme.colors.textMuted} value={topic} onChangeText={setTopic} style={styles.input} />
-        <Text style={styles.helperLabel}>Availability Slot</Text>
-        <View style={styles.slotRow}>
-          <TextInput
-            placeholder="Month"
-            placeholderTextColor={theme.colors.textMuted}
-            value={slotMonth}
-            onChangeText={setSlotMonth}
-            style={[styles.input, styles.slotInput]}
-          />
-          <TextInput
-            placeholder="Date"
-            placeholderTextColor={theme.colors.textMuted}
-            value={slotDate}
-            onChangeText={setSlotDate}
-            style={[styles.input, styles.slotInput]}
-          />
-          <TextInput
-            placeholder="Time"
-            placeholderTextColor={theme.colors.textMuted}
-            value={slotTime}
-            onChangeText={setSlotTime}
-            style={[styles.input, styles.slotInput]}
-          />
-        </View>
-        <View style={styles.periodRow}>
-          <Pressable
-            style={[styles.periodChip, slotPeriod === "AM" && styles.periodChipActive]}
-            onPress={() => setSlotPeriod("AM")}
-          >
-            <Text style={[styles.periodText, slotPeriod === "AM" && styles.periodTextActive]}>AM</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.periodChip, slotPeriod === "PM" && styles.periodChipActive]}
-            onPress={() => setSlotPeriod("PM")}
-          >
-            <Text style={[styles.periodText, slotPeriod === "PM" && styles.periodTextActive]}>PM</Text>
-          </Pressable>
-        </View>
-        <Pressable style={styles.secondaryBtn} onPress={addAvailabilitySlot}>
-          <Text style={styles.secondaryBtnText}>Add Slot</Text>
-        </Pressable>
-        {availabilitySlots.length > 0 ? (
-          <View style={styles.slotList}>
-            {availabilitySlots.map((slot) => (
-              <View key={slot} style={styles.slotChip}>
-                <Text style={styles.slotChipText}>{slot}</Text>
-                <Pressable onPress={() => removeAvailabilitySlot(slot)}>
-                  <Text style={styles.slotRemove}>Remove</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.muted}>No slots added yet.</Text>
-        )}
-        <TextInput
-          placeholder="Description"
-          placeholderTextColor={theme.colors.textMuted}
-          value={description}
-          onChangeText={setDescription}
-          style={[styles.input, styles.multilineInput]}
-          multiline
-        />
-        {err ? <Text style={styles.error}>{err}</Text> : null}
-        <View style={styles.row}>
-          <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={submit} disabled={loading}>
-            <Text style={styles.primaryBtnText}>{loading ? "Submitting..." : "Create Request"}</Text>
-          </Pressable>
-          <Pressable style={styles.secondaryBtn} onPress={load}>
-            <Text style={styles.secondaryBtnText}>Refresh</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>My Requests</Text>
-        <FlatList
-          data={mine}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.muted}>No requests yet.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>{item.topic}</Text>
-                <StatusBadge value={item.status} />
-              </View>
-              <Text style={styles.itemText}>{item.description || "No description"}</Text>
-              <Text style={styles.muted}>Slots: {(item.availabilitySlots || []).join(", ") || "N/A"}</Text>
+          <View style={styles.heroTopRow}>
+            <View style={styles.flexItem}>
+              <Text style={styles.title}>Student Dashboard</Text>
+              <Text style={styles.subtitle}>{user.email}</Text>
             </View>
-          )}
-        />
-      </View>
+            <Pressable style={styles.logoutBtn} onPress={onLogout}>
+              <Text style={styles.logoutBtnText}>Logout</Text>
+            </Pressable>
+          </View>
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Published Sessions</Text>
-        <FlatList
-          data={sessions}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.muted}>No published sessions yet.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>{item.topic}</Text>
-                <StatusBadge value={item.status} />
-              </View>
-              <Text style={styles.itemText}>Time: {item.scheduledAt || "TBD"}</Text>
-              <Text style={styles.itemText}>Location: {item.location || "TBD"}</Text>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{mine.length}</Text>
+              <Text style={styles.statLabel}>My Requests</Text>
             </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statValue}>{sessions.length}</Text>
+              <Text style={styles.statLabel}>Published Sessions</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>New Support Request</Text>
+          <TextInput placeholder="Topic" placeholderTextColor={theme.colors.textMuted} value={topic} onChangeText={setTopic} style={styles.input} />
+          <Text style={styles.helperLabel}>Availability Slot</Text>
+          <View style={styles.slotRow}>
+            <TextInput
+              placeholder="Month"
+              placeholderTextColor={theme.colors.textMuted}
+              value={slotMonth}
+              onChangeText={setSlotMonth}
+              style={[styles.input, styles.slotInput]}
+            />
+            <TextInput
+              placeholder="Date"
+              placeholderTextColor={theme.colors.textMuted}
+              value={slotDate}
+              onChangeText={setSlotDate}
+              style={[styles.input, styles.slotInput]}
+            />
+            <TextInput
+              placeholder="Time"
+              placeholderTextColor={theme.colors.textMuted}
+              value={slotTime}
+              onChangeText={setSlotTime}
+              style={[styles.input, styles.slotInput]}
+            />
+          </View>
+          <View style={styles.periodRow}>
+            <Pressable
+              style={[styles.periodChip, slotPeriod === "AM" && styles.periodChipActive]}
+              onPress={() => setSlotPeriod("AM")}
+            >
+              <Text style={[styles.periodText, slotPeriod === "AM" && styles.periodTextActive]}>AM</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.periodChip, slotPeriod === "PM" && styles.periodChipActive]}
+              onPress={() => setSlotPeriod("PM")}
+            >
+              <Text style={[styles.periodText, slotPeriod === "PM" && styles.periodTextActive]}>PM</Text>
+            </Pressable>
+          </View>
+          <Pressable style={styles.secondaryBtn} onPress={addAvailabilitySlot}>
+            <Text style={styles.secondaryBtnText}>Add Slot</Text>
+          </Pressable>
+          {availabilitySlots.length > 0 ? (
+            <View style={styles.slotList}>
+              {availabilitySlots.map((slot) => (
+                <View key={slot} style={styles.slotChip}>
+                  <Text style={styles.slotChipText}>{slot}</Text>
+                  <Pressable onPress={() => removeAvailabilitySlot(slot)}>
+                    <Text style={styles.slotRemove}>Remove</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.muted}>No slots added yet.</Text>
           )}
-        />
-      </View>
-    </ScrollView>
+          <TextInput
+            placeholder="Description"
+            placeholderTextColor={theme.colors.textMuted}
+            value={description}
+            onChangeText={setDescription}
+            style={[styles.input, styles.multilineInput]}
+            multiline
+          />
+          {err ? <Text style={styles.error}>{err}</Text> : null}
+          <View style={styles.row}>
+            <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={submit} disabled={loading}>
+              <Text style={styles.primaryBtnText}>{loading ? "Submitting..." : "Create Request"}</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryBtn} onPress={load}>
+              <Text style={styles.secondaryBtnText}>Refresh</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>My Requests</Text>
+          <FlatList
+            data={mine}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ListEmptyComponent={<Text style={styles.muted}>No requests yet.</Text>}
+            renderItem={({ item }) => (
+              <View style={styles.listItem}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.itemTitle}>{item.topic}</Text>
+                  <StatusBadge value={item.status} />
+                </View>
+                <Text style={styles.itemText}>{item.description || "No description"}</Text>
+                <Text style={styles.muted}>Slots: {(item.availabilitySlots || []).join(", ") || "N/A"}</Text>
+              </View>
+            )}
+          />
+        </View>
+
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Published Sessions</Text>
+          <FlatList
+            data={sessions}
+            keyExtractor={(item) => item.id}
+            scrollEnabled={false}
+            ListEmptyComponent={<Text style={styles.muted}>No published sessions yet.</Text>}
+            renderItem={({ item }) => (
+              <View style={styles.listItem}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.itemTitle}>{item.topic}</Text>
+                  <StatusBadge value={item.status} />
+                </View>
+                <Text style={styles.itemText}>Time: {item.scheduledAt || "TBD"}</Text>
+                <Text style={styles.itemText}>Location: {item.location || "TBD"}</Text>
+              </View>
+            )}
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  pageShell: {
+    flex: 1,
+    backgroundColor: theme.colors.bg,
+  },
   page: {
     flex: 1,
     backgroundColor: theme.colors.bg,
   },
   pageContent: {
-    padding: 16,
+    paddingTop: 18,
+    paddingRight: 16,
     paddingBottom: 28,
+    paddingLeft: 94,
     gap: 12,
   },
   heroCard: {
