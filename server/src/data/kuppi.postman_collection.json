@@ -1,0 +1,305 @@
+{
+  "info": {
+    "name": "Kuppi API (JSON Store)",
+    "_postman_id": "5d739f6f-7a11-4f9f-ae17-c5e3a3db6d8a",
+    "description": "Auth + Kuppi lifecycle endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5001" },
+    { "key": "studentEmail", "value": "student1@example.com" },
+    { "key": "studentPassword", "value": "Pass@123" },
+    { "key": "repEmail", "value": "rep1@example.com" },
+    { "key": "repPassword", "value": "Pass@123" },
+    { "key": "studentToken", "value": "" },
+    { "key": "repToken", "value": "" },
+    { "key": "groupId", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "sessionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/health"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register Student",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Student One\",\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"role\": \"student\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "Register Rep",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Rep One\",\n  \"email\": \"{{repEmail}}\",\n  \"password\": \"{{repPassword}}\",\n  \"role\": \"batchRep\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          }
+        },
+        {
+          "name": "Login Student",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.token) pm.collectionVariables.set('studentToken', r.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        },
+        {
+          "name": "Login Rep",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.token) pm.collectionVariables.set('repToken', r.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{repEmail}}\",\n  \"password\": \"{{repPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "Create Request (Student)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "const id = r?.data?.id || r?.data?._id;",
+                  "if (id) pm.collectionVariables.set('requestId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"OOP\",\n  \"description\": \"Need help with inheritance\",\n  \"availabilitySlots\": [\"Mon 6PM\", \"Wed 4PM\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/kuppi/requests"
+          }
+        },
+        {
+          "name": "Get My Requests (Student)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": "{{baseUrl}}/api/v1/kuppi/requests/mine"
+          }
+        },
+        {
+          "name": "Get All Requests (Rep/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{repToken}}" }],
+            "url": "{{baseUrl}}/api/v1/kuppi/requests/all"
+          }
+        },
+        {
+          "name": "Update Request Status (Rep/Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{repToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"GROUPED\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/kuppi/requests/{{requestId}}/status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "ML",
+      "item": [
+        {
+          "name": "Get ML Groups (Rep/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{repToken}}" }],
+            "url": "{{baseUrl}}/api/v1/ml/groups?threshold=0.35&minSize=5"
+          }
+        },
+        {
+          "name": "Apply ML Groups (Rep/Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "const gid = r?.data?.groups?.[0]?.group_id || '';",
+                  "if (gid) pm.collectionVariables.set('groupId', gid);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{repToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"threshold\": 0.35,\n  \"minSize\": 5\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/ml/apply-groups"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sessions",
+      "item": [
+        {
+          "name": "Create Session (Rep/Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "const id = r?.data?.id || r?.data?._id;",
+                  "if (id) pm.collectionVariables.set('sessionId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{repToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"OOP\",\n  \"description\": \"Kuppi for OOP doubts\",\n  \"location\": \"Lab 2\",\n  \"scheduledAt\": \"2026-02-20T10:00:00.000Z\",\n  \"requestIds\": [\"{{requestId}}\"]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/kuppi/sessions"
+          }
+        },
+        {
+          "name": "Create Session From Group (Rep/Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "const id = r?.data?.session?.id || r?.data?.session?._id;",
+                  "if (id) pm.collectionVariables.set('sessionId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{repToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": \"{{groupId}}\",\n  \"timeSlot\": \"2026-02-15 3:00 PM\",\n  \"mode\": \"online\",\n  \"meetLink\": \"https://example.com/meet/g_1\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/kuppi/sessions/from-group"
+          }
+        },
+        {
+          "name": "Publish Session (Rep/Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{repToken}}" }],
+            "url": "{{baseUrl}}/api/v1/kuppi/sessions/{{sessionId}}/publish"
+          }
+        },
+        {
+          "name": "Get Sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/kuppi/sessions"
+          }
+        },
+        {
+          "name": "Get Session Details",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": "{{baseUrl}}/api/v1/kuppi/sessions/{{sessionId}}"
+          }
+        },
+        {
+          "name": "Join Session (Student)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }],
+            "url": "{{baseUrl}}/api/v1/kuppi/sessions/{{sessionId}}/join"
+          }
+        }
+      ]
+    }
+  ]
+}
