@@ -19,7 +19,7 @@ function StatusBadge({ value }) {
   );
 }
 
-export default function StudentScreen({ user, onLogout }) {
+export default function StudentScreen({ navigation, user, onLogout }) {
   const [topic, setTopic] = useState("");
   const [slotMonth, setSlotMonth] = useState("");
   const [slotDate, setSlotDate] = useState("");
@@ -107,9 +107,14 @@ export default function StudentScreen({ user, onLogout }) {
             <Text style={styles.title}>Student Dashboard</Text>
             <Text style={styles.subtitle}>{user.email}</Text>
           </View>
-          <Pressable style={styles.logoutBtn} onPress={onLogout}>
-            <Text style={styles.logoutBtnText}>Logout</Text>
-          </Pressable>
+          <View style={styles.heroActions}>
+            <Pressable style={styles.parkingBtn} onPress={() => navigation.navigate("Parking")}>
+              <Text style={styles.parkingBtnText}>Parking</Text>
+            </Pressable>
+            <Pressable style={styles.logoutBtn} onPress={onLogout}>
+              <Text style={styles.logoutBtnText}>Logout</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -297,6 +302,22 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#e8eeff",
     marginTop: 4,
+  },
+  heroActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  parkingBtn: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+  },
+  parkingBtnText: {
+    color: "#ffffff",
+    fontWeight: "800",
   },
   logoutBtn: {
     backgroundColor: "#ffffff",

@@ -10,6 +10,7 @@ import RegisterScreen from "./src/screens/RegisterScreen";
 import StudentScreen from "./src/screens/StudentScreen";
 import RepScreen from "./src/screens/RepScreen";
 import CanteenOwnerScreen from "./src/screens/CanteenOwnerScreen";
+import ParkingScreen from "./src/screens/ParkingScreen";
 import { normalizeRole, ROLES } from "./src/constants/roles";
 
 const Stack = createNativeStackNavigator();
@@ -73,17 +74,32 @@ export default function App() {
             <Stack.Screen name="Register" options={{ title: "Create Account" }} component={RegisterScreen} />
           </>
         ) : normalizedRole === ROLES.BATCH_REP ? (
-          <Stack.Screen name="Rep" options={{ title: "Coordinator" }}>
-            {(props) => <RepScreen {...props} user={user} onLogout={logout} />}
-          </Stack.Screen>
+          <>
+            <Stack.Screen name="Rep" options={{ title: "Coordinator" }}>
+              {(props) => <RepScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+            <Stack.Screen name="Parking" options={{ title: "Parking" }}>
+              {(props) => <ParkingScreen {...props} user={user} />}
+            </Stack.Screen>
+          </>
         ) : normalizedRole === ROLES.CANTEEN_OWNER ? (
-          <Stack.Screen name="CanteenOwner" options={{ title: "Canteen Owner" }}>
-            {(props) => <CanteenOwnerScreen {...props} user={user} onLogout={logout} />}
-          </Stack.Screen>
+          <>
+            <Stack.Screen name="CanteenOwner" options={{ title: "Canteen Owner" }}>
+              {(props) => <CanteenOwnerScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+            <Stack.Screen name="Parking" options={{ title: "Parking" }}>
+              {(props) => <ParkingScreen {...props} user={user} />}
+            </Stack.Screen>
+          </>
         ) : (
-          <Stack.Screen name="Student" options={{ title: "My Kuppi" }}>
-            {(props) => <StudentScreen {...props} user={user} onLogout={logout} />}
-          </Stack.Screen>
+          <>
+            <Stack.Screen name="Student" options={{ title: "My Kuppi" }}>
+              {(props) => <StudentScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+            <Stack.Screen name="Parking" options={{ title: "Parking" }}>
+              {(props) => <ParkingScreen {...props} user={user} />}
+            </Stack.Screen>
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

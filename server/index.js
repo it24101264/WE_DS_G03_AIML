@@ -24,6 +24,9 @@ app.use("/api/v1/auth", authRoutes);
 const mlRoutes = require("./src/routes/ml.routes");
 app.use("/api/v1/ml", mlRoutes);
 
+const parkingRoutes = require("./src/routes/parking.routes");
+app.use("/api/v1/parking", parkingRoutes);
+
 const { notFound, errorHandler } = require("./src/middlewares/errorHandler");
 
 // Root route
