@@ -44,4 +44,8 @@ export const api = {
       method: "POST",
       body: { minSize, maxClusters, topClusters },
     }),
+  parkingSlots: () => apiRequest("/parking/slots"),
+  parkVehicle: (payload) => apiRequest("/parking/park", { method: "POST", body: payload }),
+  leaveParking: (payload) => apiRequest("/parking/leave", { method: "POST", body: payload }),
+  myParkingSlot: (username) => apiRequest(`/parking/my-slot/${encodeURIComponent(username)}`),
 };
