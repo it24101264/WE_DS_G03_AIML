@@ -1,5 +1,14 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Alert, Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useState } from "react";
+import {
+  Alert,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { theme } from "../ui/theme";
 
@@ -11,31 +20,21 @@ const MODULES = [
   { key: "food", label: "Food", icon: "restaurant-outline" },
 ];
 
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function ModuleSidebar({ currentModule = "study", style }) {
   const [expanded, setExpanded] = useState(false);
-  const animation = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.spring(animation, {
-      toValue: expanded ? 1 : 0,
-      useNativeDriver: false,
-      friction: 9,
-      tension: 90,
-    }).start();
-  }, [animation, expanded]);
-
-  const railWidth = animation.interpolate({
-    inputRange: [0, 1],
-    outputRange: [70, 260],
-  });
-
-  const labelOpacity = animation.interpolate({
-    inputRange: [0, 0.55, 1],
-    outputRange: [0, 0.25, 1],
-  });
+  function toggleMenu() {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded((value) => !value);
+  }
 
   function handleModulePress(module) {
     if (module.key === currentModule) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setExpanded(false);
       return;
     }
@@ -44,81 +43,121 @@ export default function ModuleSidebar({ currentModule = "study", style }) {
   }
 
   return (
-    <Animated.View style={[styles.shell, style, { width: railWidth }]}>
-      <View style={styles.inner}>
-        <Pressable style={styles.toggleButton} onPress={() => setExpanded((value) => !value)}>
-          <Ionicons name={expanded ? "close" : "grid-outline"} size={22} color="#fff" />
-          {expanded ? (
-            <Animated.Text style={[styles.toggleText, { opacity: labelOpacity }]}>Campus Hub</Animated.Text>
-          ) : null}
+    <View pointerEvents="box-none" style={[styles.shell, style]}>
+      <View style={styles.topBar}>
+        <View>
+          <Text style={styles.brandLabel}>Campus Hub</Text>
+          <Text style={styles.brandMeta}>Modules</Text>
+        </View>
+
+        <Pressable style={styles.toggleButton} onPress={toggleMenu}>
+          <Text style={styles.toggleText}>{expanded ? "Close" : "Menu"}</Text>
+          <View style={[styles.iconRotation, expanded && styles.iconRotationExpanded]}>
+            <Ionicons name={expanded ? "close" : "grid-outline"} size={18} color="#fff" />
+          </View>
         </Pressable>
+      </View>
 
-        <View style={styles.moduleList}>
-          {MODULES.map((module) => {
-            const active = module.key === currentModule;
+      {expanded ? (
+        <View style={styles.panel}>
+          <View style={styles.moduleList}>
+            {MODULES.map((module) => {
+              const active = module.key === currentModule;
 
-            return (
-              <Pressable
-                key={module.key}
-                style={[styles.moduleButton, active && styles.moduleButtonActive]}
-                onPress={() => handleModulePress(module)}
-              >
-                <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
-                  <Ionicons
-                    name={module.icon}
-                    size={20}
-                    color={active ? theme.colors.primary : "#dbe7ff"}
-                  />
-                </View>
-                {expanded ? (
-                  <Animated.View style={[styles.labelWrap, { opacity: labelOpacity }]}>
+              return (
+                <Pressable
+                  key={module.key}
+                  style={[styles.moduleButton, active && styles.moduleButtonActive]}
+                  onPress={() => handleModulePress(module)}
+                >
+                  <View style={[styles.iconWrap, active && styles.iconWrapActive]}>
+                    <Ionicons
+                      name={module.icon}
+                      size={20}
+                      color={active ? theme.colors.primary : "#dbe7ff"}
+                    />
+                  </View>
+                  <View style={styles.labelWrap}>
                     <Text style={[styles.moduleLabel, active && styles.moduleLabelActive]} numberOfLines={2}>
                       {module.label}
                     </Text>
-                    <Text style={styles.moduleMeta}>{active ? "Current module" : "Link coming soon"}</Text>
-                  </Animated.View>
-                ) : null}
-              </Pressable>
-            );
-          })}
+                    <Text style={[styles.moduleMeta, active && styles.moduleMetaActive]}>
+                      {active ? "Current module" : "Link coming soon"}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
-    </Animated.View>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   shell: {
     position: "absolute",
-    left: 12,
     top: 18,
-    bottom: 18,
+    left: 16,
+    right: 16,
     zIndex: 40,
   },
-  inner: {
-    flex: 1,
+  topBar: {
     backgroundColor: "#102a63",
-    borderRadius: 28,
-    padding: 10,
-    gap: 10,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    minHeight: 68,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.14)",
     ...theme.shadow.soft,
   },
+  brandLabel: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  brandMeta: {
+    color: "#c8d4f0",
+    fontSize: 12,
+    marginTop: 2,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
   toggleButton: {
-    minHeight: 52,
-    borderRadius: 20,
+    minHeight: 40,
+    borderRadius: 999,
     backgroundColor: "#2157f2",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
     paddingHorizontal: 12,
+    gap: 8,
   },
   toggleText: {
     color: "#fff",
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
+  },
+  iconRotation: {
+    transform: [{ rotate: "0deg" }],
+  },
+  iconRotationExpanded: {
+    transform: [{ rotate: "180deg" }],
+  },
+  panel: {
+    marginTop: 10,
+    backgroundColor: "#102a63",
+    borderRadius: 24,
+    padding: 12,
+    zIndex: 39,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    ...theme.shadow.soft,
   },
   moduleList: {
     gap: 10,
@@ -129,7 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     gap: 10,
   },
   moduleButtonActive: {
@@ -162,5 +201,8 @@ const styles = StyleSheet.create({
     color: "#c8d4f0",
     fontSize: 11,
     marginTop: 3,
+  },
+  moduleMetaActive: {
+    color: theme.colors.textMuted,
   },
 });

@@ -40,7 +40,8 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     padding: 20,
-    paddingLeft: 94,
+    paddingTop: 104,
+    paddingLeft: 20,
     justifyContent: "center",
   },
   card: {

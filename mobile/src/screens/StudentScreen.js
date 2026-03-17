@@ -258,10 +258,10 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.bg,
   },
   pageContent: {
-    paddingTop: 18,
+    paddingTop: 104,
     paddingRight: 16,
     paddingBottom: 28,
-    paddingLeft: 94,
+    paddingLeft: 16,
     gap: 12,
   },
   heroCard: {
