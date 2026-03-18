@@ -255,11 +255,21 @@ export default function Index() {
       </View>
 
       <View style={styles.infoCard}>
-        <View style={styles.occupancyBarWrap}>
-        <View style={styles.occupancyBarBg}>
-          <View style={[styles.occupancyBarFill, { width: `${occupancyPct}%` }]} />
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionEyebrow}>Overview</Text>
+            <Text style={styles.sectionTitle}>Parking status</Text>
+          </View>
+          <View style={styles.sectionBadge}>
+            <Text style={styles.sectionBadgeText}>{mySlot ? `Your slot: ${mySlot}` : "No active slot"}</Text>
+          </View>
         </View>
-        <Text style={styles.occupancyBarLabel}>Lot occupancy: {occupancyPct}%</Text>
+
+        <View style={styles.occupancyBarWrap}>
+          <View style={styles.occupancyBarBg}>
+            <View style={[styles.occupancyBarFill, { width: `${occupancyPct}%` }]} />
+          </View>
+          <Text style={styles.occupancyBarLabel}>Lot occupancy: {occupancyPct}%</Text>
         </View>
 
         <View style={styles.legend}>
@@ -274,6 +284,14 @@ export default function Index() {
             </View>
           ))}
         </View>
+      </View>
+
+      <View style={styles.mapHeader}>
+        <View>
+          <Text style={styles.sectionEyebrow}>Map</Text>
+          <Text style={styles.sectionTitle}>Lot layout</Text>
+        </View>
+        <Text style={styles.mapHint}>Tap a slot to park. Tap your slot to leave.</Text>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -422,7 +440,7 @@ export default function Index() {
         </View>
       </ScrollView>
 
-      <Text style={styles.footer}>Tap a slot to park. Tap your slot to leave.</Text>
+      <Text style={styles.footer}>Parking colors and road layout remain unchanged for clarity.</Text>
     </ScrollView>
   );
 }
@@ -472,12 +490,12 @@ const styles = StyleSheet.create({
   refreshBtn: {
     backgroundColor: "rgba(255,255,255,0.16)",
     borderRadius: theme.radius.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.24)",
   },
-  refreshText: { color: "#ffffff", fontWeight: "800", fontSize: 13 },
+  refreshText: { color: "#ffffff", fontWeight: "800", fontSize: 13, paddingHorizontal: 10, paddingVertical: 4 },
   statsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   statCard: {
     flex: 1,
@@ -500,6 +518,38 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     gap: 12,
     ...theme.shadow.soft,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  sectionEyebrow: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  sectionTitle: {
+    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  sectionBadge: {
+    backgroundColor: theme.colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  sectionBadgeText: {
+    color: theme.colors.primaryDeep,
+    fontSize: 12,
+    fontWeight: "800",
   },
   occupancyBarWrap: { gap: 5 },
   occupancyBarBg: {
@@ -527,6 +577,20 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 8 },
   legendSwatch: { width: 20, height: 12, borderRadius: 3 },
   legendText: { color: theme.colors.textMuted, fontWeight: "700", fontSize: 11, letterSpacing: 0.5 },
+  mapHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    gap: 12,
+    paddingHorizontal: 2,
+  },
+  mapHint: {
+    color: theme.colors.textMuted,
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "right",
+    maxWidth: 180,
+  },
   canvas: {
     position: "relative",
     overflow: "hidden",
@@ -805,7 +869,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 11,
     fontWeight: "600",
-    marginTop: 2,
+    marginTop: 4,
     letterSpacing: 0.5,
   },
 });
