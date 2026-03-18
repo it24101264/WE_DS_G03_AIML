@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import Constants from "expo-constants";
+import { theme } from "../src/ui/theme";
 
 type SlotSide = "A" | "B" | "BIKE";
 type SlotStatus = "available" | "occupied";
@@ -216,55 +217,63 @@ export default function Index() {
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.screenPad}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSub}>CAMPUS</Text>
-          <Text style={styles.title}>Smart Parking</Text>
+      <View style={styles.heroCard}>
+        <View style={styles.bgOrbOne} />
+        <View style={styles.bgOrbTwo} />
+
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.headerSub}>CAMPUS</Text>
+            <Text style={styles.title}>Smart Parking</Text>
+            <Text style={styles.subtitle}>Live lot overview for students and staff</Text>
+          </View>
+          <View style={styles.refreshBtn}>
+            <Pressable onPress={refreshAll}>
+              <Text style={styles.refreshText}>Refresh</Text>
+            </Pressable>
+          </View>
         </View>
-        <View style={styles.refreshBtn}>
-          <Pressable onPress={refreshAll}>
-            <Text style={styles.refreshText}>Refresh</Text>
-          </Pressable>
+
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, styles.statCardGreen]}>
+            <Text style={styles.statValue}>{availableCount}</Text>
+            <Text style={styles.statLabel}>Available</Text>
+          </View>
+          <View style={[styles.statCard, styles.statCardRed]}>
+            <Text style={styles.statValue}>{occupiedCount}</Text>
+            <Text style={styles.statLabel}>Occupied</Text>
+          </View>
+          <View style={[styles.statCard, styles.statCardGray]}>
+            <Text style={styles.statValue}>{totalSlots}</Text>
+            <Text style={styles.statLabel}>Total Slots</Text>
+          </View>
+          <View style={[styles.statCard, styles.statCardBlue]}>
+            <Text style={styles.statValue}>{occupancyPct}%</Text>
+            <Text style={styles.statLabel}>Full</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, styles.statCardGreen]}>
-          <Text style={styles.statValue}>{availableCount}</Text>
-          <Text style={styles.statLabel}>Available</Text>
-        </View>
-        <View style={[styles.statCard, styles.statCardRed]}>
-          <Text style={styles.statValue}>{occupiedCount}</Text>
-          <Text style={styles.statLabel}>Occupied</Text>
-        </View>
-        <View style={[styles.statCard, styles.statCardGray]}>
-          <Text style={styles.statValue}>{totalSlots}</Text>
-          <Text style={styles.statLabel}>Total Slots</Text>
-        </View>
-        <View style={[styles.statCard, styles.statCardBlue]}>
-          <Text style={styles.statValue}>{occupancyPct}%</Text>
-          <Text style={styles.statLabel}>Full</Text>
-        </View>
-      </View>
-
-      <View style={styles.occupancyBarWrap}>
+      <View style={styles.infoCard}>
+        <View style={styles.occupancyBarWrap}>
         <View style={styles.occupancyBarBg}>
           <View style={[styles.occupancyBarFill, { width: `${occupancyPct}%` }]} />
         </View>
         <Text style={styles.occupancyBarLabel}>Lot occupancy: {occupancyPct}%</Text>
-      </View>
+        </View>
 
-      <View style={styles.legend}>
-        {[
-          { color: "#4ade80", label: "Available" },
-          { color: "#f87171", label: "Occupied" },
-          { color: "#60a5fa", label: "Your Slot" },
-        ].map((item) => (
-          <View key={item.label} style={styles.legendItem}>
-            <View style={[styles.legendSwatch, { backgroundColor: item.color }]} />
-            <Text style={styles.legendText}>{item.label}</Text>
-          </View>
-        ))}
+        <View style={styles.legend}>
+          {[
+            { color: "#4ade80", label: "Available" },
+            { color: "#f87171", label: "Occupied" },
+            { color: "#60a5fa", label: "Your Slot" },
+          ].map((item) => (
+            <View key={item.label} style={styles.legendItem}>
+              <View style={[styles.legendSwatch, { backgroundColor: item.color }]} />
+              <Text style={styles.legendText}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
@@ -419,45 +428,83 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#0f172a" },
-  screenPad: { paddingBottom: 32 },
+  screen: { flex: 1, backgroundColor: theme.colors.bg },
+  screenPad: { padding: 16, paddingBottom: 32, gap: 12 },
+  heroCard: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.lg,
+    padding: 16,
+    overflow: "hidden",
+    ...theme.shadow.soft,
+  },
+  bgOrbOne: {
+    position: "absolute",
+    width: 180,
+    height: 180,
+    borderRadius: 120,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    top: -70,
+    right: -40,
+  },
+  bgOrbTwo: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 120,
+    backgroundColor: "rgba(255,255,255,0.13)",
+    bottom: -40,
+    left: -30,
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
+    gap: 12,
   },
-  headerSub: { fontSize: 10, color: "#64748b", fontWeight: "800", letterSpacing: 3 },
-  title: { fontSize: 28, fontWeight: "900", color: "#f1f5f9", letterSpacing: -0.5 },
+  headerSub: { fontSize: 10, color: "#dbe7ff", fontWeight: "800", letterSpacing: 3 },
+  title: { fontSize: 28, fontWeight: "900", color: "#f8fbff", letterSpacing: -0.5 },
+  subtitle: {
+    marginTop: 4,
+    color: "#e8eeff",
+    fontSize: 13,
+    fontWeight: "500",
+  },
   refreshBtn: {
-    backgroundColor: "#1e293b",
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "rgba(255,255,255,0.24)",
   },
-  refreshText: { color: "#94a3b8", fontWeight: "700", fontSize: 13 },
-  statsRow: { flexDirection: "row", gap: 10, paddingHorizontal: 20, marginBottom: 14 },
+  refreshText: { color: "#ffffff", fontWeight: "800", fontSize: 13 },
+  statsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   statCard: {
     flex: 1,
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: theme.radius.md,
+    padding: 12,
     alignItems: "center",
     borderWidth: 1,
   },
-  statCardGreen: { backgroundColor: "#052e16", borderColor: "#166534" },
-  statCardRed: { backgroundColor: "#2d0707", borderColor: "#7f1d1d" },
-  statCardGray: { backgroundColor: "#1e293b", borderColor: "#334155" },
-  statCardBlue: { backgroundColor: "#0c1a3a", borderColor: "#1e40af" },
-  statValue: { fontSize: 26, fontWeight: "900", color: "#f1f5f9" },
-  statLabel: { fontSize: 10, color: "#94a3b8", fontWeight: "700", marginTop: 2, letterSpacing: 1 },
-  occupancyBarWrap: { paddingHorizontal: 20, marginBottom: 14 },
+  statCardGreen: { backgroundColor: "rgba(16,185,129,0.18)", borderColor: "rgba(255,255,255,0.16)" },
+  statCardRed: { backgroundColor: "rgba(248,113,113,0.18)", borderColor: "rgba(255,255,255,0.16)" },
+  statCardGray: { backgroundColor: "rgba(255,255,255,0.14)", borderColor: "rgba(255,255,255,0.16)" },
+  statCardBlue: { backgroundColor: "rgba(96,165,250,0.2)", borderColor: "rgba(255,255,255,0.16)" },
+  statValue: { fontSize: 26, fontWeight: "900", color: "#f8fbff" },
+  statLabel: { fontSize: 10, color: "#e5ecff", fontWeight: "700", marginTop: 2, letterSpacing: 1 },
+  infoCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 12,
+    ...theme.shadow.soft,
+  },
+  occupancyBarWrap: { gap: 5 },
   occupancyBarBg: {
     height: 8,
-    backgroundColor: "#1e293b",
+    backgroundColor: theme.colors.surfaceAlt,
     borderRadius: 99,
     overflow: "hidden",
   },
@@ -466,24 +513,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#ef4444",
     borderRadius: 99,
   },
-  occupancyBarLabel: { fontSize: 10, color: "#64748b", fontWeight: "700", marginTop: 5, letterSpacing: 1 },
+  occupancyBarLabel: {
+    fontSize: 10,
+    color: theme.colors.textMuted,
+    fontWeight: "700",
+    letterSpacing: 1,
+  },
   legend: {
     flexDirection: "row",
     gap: 20,
-    paddingHorizontal: 20,
-    marginBottom: 16,
     flexWrap: "wrap",
   },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 8 },
   legendSwatch: { width: 20, height: 12, borderRadius: 3 },
-  legendText: { color: "#94a3b8", fontWeight: "700", fontSize: 11, letterSpacing: 0.5 },
+  legendText: { color: theme.colors.textMuted, fontWeight: "700", fontSize: 11, letterSpacing: 0.5 },
   canvas: {
     position: "relative",
     overflow: "hidden",
-    marginHorizontal: 20,
-    borderRadius: 16,
+    borderRadius: theme.radius.md,
     borderWidth: 2,
     borderColor: "#334155",
+    ...theme.shadow.soft,
   },
   asphalt: {
     backgroundColor: "#1c2333",
@@ -752,10 +802,10 @@ const styles = StyleSheet.create({
   scaleBarLabel: { fontSize: 7, color: "#64748b", fontWeight: "700", marginTop: 2, letterSpacing: 1 },
   footer: {
     textAlign: "center",
-    color: "#475569",
+    color: theme.colors.textMuted,
     fontSize: 11,
     fontWeight: "600",
-    marginTop: 14,
+    marginTop: 2,
     letterSpacing: 0.5,
   },
 });
