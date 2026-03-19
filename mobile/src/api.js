@@ -48,4 +48,28 @@ export const api = {
   parkVehicle: (payload) => apiRequest("/parking/park", { method: "POST", body: payload }),
   leaveParking: (payload) => apiRequest("/parking/leave", { method: "POST", body: payload }),
   myParkingSlot: (username) => apiRequest(`/parking/my-slot/${encodeURIComponent(username)}`),
+  createLostFoundItem: (payload) => apiRequest("/lost-found/items", { method: "POST", body: payload }),
+  lostFoundItems: (params = {}) => {
+    const queryParts = [];
+    if (params.type) queryParts.push(`type=${encodeURIComponent(params.type)}`);
+    if (params.status) queryParts.push(`status=${encodeURIComponent(params.status)}`);
+    if (params.location) queryParts.push(`location=${encodeURIComponent(params.location)}`);
+    if (params.itemCategory) queryParts.push(`itemCategory=${encodeURIComponent(params.itemCategory)}`);
+    if (params.q) queryParts.push(`q=${encodeURIComponent(params.q)}`);
+    const suffix = queryParts.length ? `?${queryParts.join("&")}` : "";
+    return apiRequest(`/lost-found/items${suffix}`);
+  },
+  myLostFoundItems: () => apiRequest("/lost-found/items/mine"),
+  lostFoundItemById: (id) => apiRequest(`/lost-found/items/${encodeURIComponent(id)}`),
+  updateLostFoundItem: (id, payload) =>
+    apiRequest(`/lost-found/items/${encodeURIComponent(id)}`, { method: "PATCH", body: payload }),
+  claimLostFoundItem: (id, payload) =>
+    apiRequest(`/lost-found/items/${encodeURIComponent(id)}/claims`, { method: "POST", body: payload }),
+  reviewLostFoundClaim: (id, claimId, payload) =>
+    apiRequest(`/lost-found/items/${encodeURIComponent(id)}/claims/${encodeURIComponent(claimId)}/review`, {
+      method: "PATCH",
+      body: payload,
+    }),
+  updateLostFoundStatus: (id, payload) =>
+    apiRequest(`/lost-found/items/${encodeURIComponent(id)}/status`, { method: "PATCH", body: payload }),
 };
