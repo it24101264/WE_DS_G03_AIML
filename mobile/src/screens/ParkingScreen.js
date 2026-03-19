@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { useIsFocused } from "@react-navigation/native";
 import { api } from "../api";
 import { theme } from "../ui/theme";
 
@@ -8,6 +9,7 @@ export default function ParkingScreen({ user }) {
   const [mySlot, setMySlot] = useState(null);
   const username = String(user?.name || user?.email || user?.id || "testUser").trim();
   const { width } = useWindowDimensions();
+  const isFocused = useIsFocused();
 
   async function fetchSlots() {
     try {
@@ -23,8 +25,19 @@ export default function ParkingScreen({ user }) {
   }
 
   useEffect(() => {
+    if (!isFocused) return;
     fetchSlots();
-  }, [username]);
+  }, [username, isFocused]);
+
+  useEffect(() => {
+    if (!isFocused) return undefined;
+
+    const intervalId = setInterval(() => {
+      fetchSlots();
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [username, isFocused]);
 
   async function handleSlotClick(slotId, status) {
     try {
