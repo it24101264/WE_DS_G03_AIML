@@ -7,13 +7,7 @@ import { theme } from "./src/ui/theme";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
-import HomeScreen from "./src/screens/HomeScreen";
-import KuppiScreen from "./src/screens/KuppiScreen";
-import LostFoundScreen from "./src/screens/LostFoundScreen";
-import LostFoundPostScreen from "./src/screens/LostFoundPostScreen";
-import LostFoundMyItemsScreen from "./src/screens/LostFoundMyItemsScreen";
-import LostFoundDetailScreen from "./src/screens/LostFoundDetailScreen";
-import LostFoundEditScreen from "./src/screens/LostFoundEditScreen";
+import StudentScreen from "./src/screens/StudentScreen";
 import RepScreen from "./src/screens/RepScreen";
 import CanteenOwnerScreen from "./src/screens/CanteenOwnerScreen";
 import ParkingScreen from "./src/screens/ParkingScreen";
@@ -67,7 +61,7 @@ export default function App() {
           headerTitleAlign: "left",
           headerStyle: { backgroundColor: theme.colors.surface },
           headerTintColor: theme.colors.text,
-          headerTitleStyle: { fontWeight: "500", fontSize: 20 },
+          headerTitleStyle: { fontWeight: "800", fontSize: 20 },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: theme.colors.bg },
         }}
@@ -99,26 +93,8 @@ export default function App() {
           </>
         ) : (
           <>
-            <Stack.Screen name="Home" options={{ title: "Home" }}>
-              {(props) => <HomeScreen {...props} user={user} onLogout={logout} />}
-            </Stack.Screen>
-            <Stack.Screen name="Kuppi" options={{ title: "Kuppi Sessions" }}>
-              {(props) => <KuppiScreen {...props} user={user} />}
-            </Stack.Screen>
-            <Stack.Screen name="LostFound" options={{ title: "Lost & Found" }}>
-              {(props) => <LostFoundScreen {...props} user={user} />}
-            </Stack.Screen>
-            <Stack.Screen name="LostFoundPost" options={{ title: "Post Item" }}>
-              {(props) => <LostFoundPostScreen {...props} user={user} />}
-            </Stack.Screen>
-            <Stack.Screen name="LostFoundMyItems" options={{ title: "My Items" }}>
-              {(props) => <LostFoundMyItemsScreen {...props} user={user} />}
-            </Stack.Screen>
-            <Stack.Screen name="LostFoundEdit" options={{ title: "Edit Item" }}>
-              {(props) => <LostFoundEditScreen {...props} user={user} />}
-            </Stack.Screen>
-            <Stack.Screen name="LostFoundDetail" options={{ title: "Item Details" }}>
-              {(props) => <LostFoundDetailScreen {...props} user={user} />}
+            <Stack.Screen name="Student" options={{ title: "My Kuppi" }}>
+              {(props) => <StudentScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
             <Stack.Screen name="Parking" options={{ title: "Parking" }}>
               {(props) => <ParkingScreen {...props} user={user} />}
