@@ -1,81 +1,111 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
-import { api } from "../api";
-import { theme } from "../ui/theme";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import Constants from "expo-constants";
+import { theme } from "../src/ui/theme";
 
-export default function ParkingScreen({ user }) {
-  const [slots, setSlots] = useState([]);
-  const [mySlot, setMySlot] = useState(null);
-  const username = String(user?.name || user?.email || user?.id || "testUser").trim();
+type SlotSide = "A" | "B" | "BIKE";
+type SlotStatus = "available" | "occupied";
+
+type Slot = {
+  slotId: string;
+  side: SlotSide;
+  status: SlotStatus;
+};
+
+type SlotsResponse = {
+  success: boolean;
+  data?: Slot[];
+  message?: string;
+};
+
+type MySlotResponse = {
+  success: boolean;
+  data?: { slotId: string | null };
+  message?: string;
+};
+
+type ActionResponse = {
+  success: boolean;
+  message?: string;
+};
+
+const expoHost = Constants.expoConfig?.hostUri?.split(":")[0];
+const defaultHost = expoHost || "127.0.0.1";
+const baseUrl =
+  process.env.EXPO_PUBLIC_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_API_BASE ||
+  `http://${defaultHost}:5001/api/v1/parking`;
+const username = "testUser";
+
+const slotNum = (id: string) => {
+  const match = id.match(/\d+/);
+  return match ? parseInt(match[0], 10) : 0;
+};
+
+function chunk<T>(arr: T[], size: number) {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+async function parseJson<T>(res: Response): Promise<T> {
+  return (await res.json()) as T;
+}
+
+export default function Index() {
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [mySlot, setMySlot] = useState<string | null>(null);
   const { width } = useWindowDimensions();
 
-  async function fetchSlots() {
+  const refreshAll = async () => {
     try {
-      const [slotRes, mySlotRes] = await Promise.all([
-        api.parkingSlots(),
-        api.myParkingSlot(username),
+      const [slotsRes, mySlotRes] = await Promise.all([
+        fetch(`${baseUrl}/slots`),
+        fetch(`${baseUrl}/my-slot/${encodeURIComponent(username)}`),
       ]);
-      setSlots(slotRes.data || []);
-      setMySlot(mySlotRes.data?.slotId || null);
-    } catch (err) {
-      Alert.alert("Error", err.message || "Cannot connect to parking backend");
+
+      const slotsJson = await parseJson<SlotsResponse>(slotsRes);
+      const mySlotJson = await parseJson<MySlotResponse>(mySlotRes);
+
+      if (!slotsRes.ok || !slotsJson.success) {
+        throw new Error(slotsJson.message || "Failed to load parking slots");
+      }
+
+      if (!mySlotRes.ok || !mySlotJson.success) {
+        throw new Error(mySlotJson.message || "Failed to load current parking slot");
+      }
+
+      setSlots(slotsJson.data || []);
+      setMySlot(mySlotJson.data?.slotId ?? null);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Backend not reachable. Make sure the server is running on port 5001.");
     }
-  }
+  };
 
   useEffect(() => {
-    fetchSlots();
-  }, [username]);
-
-  async function handleSlotClick(slotId, status) {
-    try {
-      if (mySlot && mySlot !== slotId) {
-        Alert.alert("Leave your current slot first.");
-        return;
-      }
-
-      if (status === "occupied" && mySlot !== slotId) {
-        Alert.alert("Slot already occupied.");
-        return;
-      }
-
-      if (mySlot === slotId) {
-        const res = await api.leaveParking({ username, slotId });
-        Alert.alert(res.message || "Vehicle left successfully");
-        setMySlot(null);
-        await fetchSlots();
-        return;
-      }
-
-      const res = await api.parkVehicle({ username, slotId });
-      Alert.alert(res.message || "Vehicle parked successfully");
-      setMySlot(slotId);
-      await fetchSlots();
-    } catch (err) {
-      Alert.alert("Error", err.message || "Parking action failed");
-    }
-  }
-
-  function slotNum(id) {
-    const match = String(id || "").match(/\d+/);
-    return match ? parseInt(match[0], 10) : 0;
-  }
-
-  function chunk(arr, size) {
-    const out = [];
-    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-    return out;
-  }
+    refreshAll();
+  }, []);
 
   const availableCount = useMemo(
     () => slots.filter((slot) => slot.status === "available").length,
     [slots]
   );
+
   const occupiedCount = useMemo(
     () => slots.filter((slot) => slot.status === "occupied").length,
     [slots]
   );
-  const totalSlots = slots.length;
-  const occupancyPct = totalSlots > 0 ? Math.round((occupiedCount / totalSlots) * 100) : 0;
+
+  const slotById = useMemo(() => new Map(slots.map((slot) => [slot.slotId, slot])), [slots]);
 
   const bikeSlots = useMemo(
     () =>
@@ -84,6 +114,7 @@ export default function ParkingScreen({ user }) {
         .sort((a, b) => slotNum(a.slotId) - slotNum(b.slotId)),
     [slots]
   );
+
   const carA = useMemo(
     () =>
       slots
@@ -91,6 +122,7 @@ export default function ParkingScreen({ user }) {
         .sort((a, b) => slotNum(a.slotId) - slotNum(b.slotId)),
     [slots]
   );
+
   const carB = useMemo(
     () =>
       slots
@@ -99,15 +131,44 @@ export default function ParkingScreen({ user }) {
     [slots]
   );
 
-  const bikeRows = useMemo(() => chunk(bikeSlots, 10), [bikeSlots]);
-  const carARows = useMemo(() => chunk(carA, 10), [carA]);
-  const carBRows = useMemo(() => chunk(carB, 10), [carB]);
+  const handleSlotPress = async (slotId: string, status: SlotStatus) => {
+    try {
+      if (mySlot && mySlot !== slotId) {
+        Alert.alert("Info", "You must leave your current slot before selecting another.");
+        return;
+      }
 
-  const slotById = useMemo(() => new Map(slots.map((slot) => [slot.slotId, slot])), [slots]);
-  const canvasW = Math.max(width, 960);
-  const canvasH = 600;
+      if (status === "occupied" && mySlot !== slotId) {
+        Alert.alert("Info", "This slot is already occupied.");
+        return;
+      }
 
-  function SlotBox({ slotId, size }) {
+      const endpoint = mySlot === slotId ? "leave" : "park";
+      const res = await fetch(`${baseUrl}/${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, slotId }),
+      });
+      const data = await parseJson<ActionResponse>(res);
+
+      Alert.alert("Result", data.message || "Done");
+
+      if (res.ok && data.success) {
+        await refreshAll();
+      }
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Error", "Request failed.");
+    }
+  };
+
+  const SlotBox = ({
+    slotId,
+    size,
+  }: {
+    slotId: string;
+    size: "bike" | "car";
+  }) => {
     const slot = slotById.get(slotId);
     if (!slot) return null;
 
@@ -121,12 +182,16 @@ export default function ParkingScreen({ user }) {
 
     return (
       <Pressable
-        onPress={() => handleSlotClick(slot.slotId, slot.status)}
+        onPress={() => handleSlotPress(slot.slotId, slot.status)}
         hitSlop={10}
         style={[styles.tileBase, tileStyle, bgStyle]}
       >
-        {size === "car" && slot.status === "occupied" && !isMine ? <View style={styles.carSilhouette} /> : null}
-        {size === "bike" && slot.status === "occupied" && !isMine ? <View style={styles.bikeSilhouette} /> : null}
+        {size === "car" && slot.status === "occupied" && !isMine ? (
+          <View style={styles.carSilhouette} />
+        ) : null}
+        {size === "bike" && slot.status === "occupied" && !isMine ? (
+          <View style={styles.bikeSilhouette} />
+        ) : null}
         {isMine ? (
           <View style={styles.myVehiclePin}>
             <Text style={styles.myVehiclePinText}>*</Text>
@@ -138,10 +203,20 @@ export default function ParkingScreen({ user }) {
         {size === "car" && !isMine ? <View style={styles.slotNumberStrip} /> : null}
       </Pressable>
     );
-  }
+  };
+
+  const canvasW = Math.max(width, 960);
+  const canvasH = 600;
+
+  const bikeRows = useMemo(() => chunk(bikeSlots, 10), [bikeSlots]);
+  const carARows = useMemo(() => chunk(carA, 10), [carA]);
+  const carBRows = useMemo(() => chunk(carB, 10), [carB]);
+
+  const totalSlots = slots.length;
+  const occupancyPct = totalSlots > 0 ? Math.round((occupiedCount / totalSlots) * 100) : 0;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.screenPad}>
       <View style={styles.heroCard}>
         <View style={styles.bgOrbOne} />
         <View style={styles.bgOrbTwo} />
@@ -150,11 +225,13 @@ export default function ParkingScreen({ user }) {
           <View>
             <Text style={styles.headerSub}>CAMPUS</Text>
             <Text style={styles.title}>Smart Parking</Text>
-            <Text style={styles.subtitle}>Driver: {username}</Text>
+            <Text style={styles.subtitle}>Live lot overview for students and staff</Text>
           </View>
-          <Pressable style={styles.refreshBtn} onPress={fetchSlots}>
-            <Text style={styles.refreshText}>Refresh</Text>
-          </Pressable>
+          <View style={styles.refreshBtn}>
+            <Pressable onPress={refreshAll}>
+              <Text style={styles.refreshText}>Refresh</Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.statsRow}>
@@ -230,9 +307,11 @@ export default function ParkingScreen({ user }) {
 
           <View style={[styles.mainRoad, { right: 0, top: 0, width: 80, height: canvasH }]} />
           <View style={[styles.centerLineV, { right: 37, top: 20, height: canvasH - 40 }]} />
+
           <View style={[styles.roadSignBadge, { right: 8, top: canvasH / 2 - 60 }]}>
             <Text style={styles.roadSignText}>BACK GATE{"\n"}MAIN ROAD</Text>
           </View>
+
           <View style={[styles.arrowBadge, styles.arrowGreen, { right: 88, top: 150 }]}>
             <Text style={styles.arrowText}>ENTRY</Text>
           </View>
@@ -240,16 +319,25 @@ export default function ParkingScreen({ user }) {
             <Text style={styles.arrowText}>EXIT</Text>
           </View>
 
-          <View style={[styles.mainRoad, { left: 0, top: canvasH / 2 - 30, width: canvasW - 80, height: 60 }]} />
+          <View
+            style={[
+              styles.mainRoad,
+              { left: 0, top: canvasH / 2 - 30, width: canvasW - 80, height: 60 },
+            ]}
+          />
           {Array.from({ length: 14 }).map((_, i) => (
             <View key={`dash${i}`} style={[styles.dashH, { left: 30 + i * 65, top: canvasH / 2 - 3 }]} />
           ))}
+
           <View style={[styles.roadSignBadge, { left: 18, top: canvasH / 2 + 32 }]}>
             <Text style={styles.roadSignText}>CAMPUS ROAD FROM FOOT</Text>
           </View>
 
           {Array.from({ length: 5 }).map((_, i) => (
-            <View key={`cw${i}`} style={[styles.crosswalkStripe, { left: 318 + i * 10, top: canvasH / 2 - 30, height: 60 }]} />
+            <View
+              key={`cw${i}`}
+              style={[styles.crosswalkStripe, { left: 318 + i * 10, top: canvasH / 2 - 30, height: 60 }]}
+            />
           ))}
 
           <View style={[styles.buildingBox, { left: 360, top: canvasH / 2 + 32, width: 110, height: 60 }]}>
@@ -273,6 +361,7 @@ export default function ParkingScreen({ user }) {
               <View style={styles.zoneHeaderAccent} />
               <Text style={styles.zoneHeaderText}>MOTORCYCLE PARKING</Text>
             </View>
+
             <View style={styles.bayLinesContainer}>
               {bikeRows.map((row, ri) => (
                 <View key={ri} style={styles.bayRow}>
@@ -293,7 +382,9 @@ export default function ParkingScreen({ user }) {
               <View style={[styles.zoneHeaderAccent, { backgroundColor: "#60a5fa" }]} />
               <Text style={styles.zoneHeaderText}>CAR PARK - SIDE A</Text>
             </View>
+
             <View style={styles.aisleRoad} />
+
             <View style={styles.bayLinesContainer}>
               {carARows.map((row, ri) => (
                 <View key={ri} style={styles.bayRow}>
@@ -309,12 +400,19 @@ export default function ParkingScreen({ user }) {
             </View>
           </View>
 
-          <View style={[styles.parkingZone, { left: 360, top: canvasH / 2 + 32, right: 90, height: canvasH / 2 - 50 }]}>
+          <View
+            style={[
+              styles.parkingZone,
+              { left: 360, top: canvasH / 2 + 32, right: 90, height: canvasH / 2 - 50 },
+            ]}
+          >
             <View style={styles.zoneHeader}>
               <View style={[styles.zoneHeaderAccent, { backgroundColor: "#a78bfa" }]} />
               <Text style={styles.zoneHeaderText}>CAR PARK - SIDE B</Text>
             </View>
+
             <View style={styles.aisleRoad} />
+
             <View style={styles.bayLinesContainer}>
               {carBRows.map((row, ri) => (
                 <View key={ri} style={styles.bayRow}>
@@ -334,6 +432,7 @@ export default function ParkingScreen({ user }) {
             <Text style={styles.compassN}>N</Text>
             <Text style={styles.compassRose}>^</Text>
           </View>
+
           <View style={[styles.scaleBar, { left: 70, bottom: 20 }]}>
             <View style={styles.scaleBarLine} />
             <Text style={styles.scaleBarLabel}>Scale</Text>
@@ -347,15 +446,8 @@ export default function ParkingScreen({ user }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.bg,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 28,
-    gap: 12,
-  },
+  screen: { flex: 1, backgroundColor: theme.colors.bg },
+  screenPad: { padding: 16, paddingBottom: 32, gap: 12 },
   heroCard: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.lg,
@@ -388,36 +480,23 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerSub: { fontSize: 10, color: "#dbe7ff", fontWeight: "800", letterSpacing: 3 },
-  title: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#f8fbff",
-    letterSpacing: -0.5,
-  },
+  title: { fontSize: 28, fontWeight: "900", color: "#f8fbff", letterSpacing: -0.5 },
   subtitle: {
-    color: "#e8eeff",
     marginTop: 4,
+    color: "#e8eeff",
     fontSize: 13,
     fontWeight: "500",
   },
   refreshBtn: {
     backgroundColor: "rgba(255,255,255,0.16)",
     borderRadius: theme.radius.sm,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.24)",
   },
-  refreshText: {
-    color: "#ffffff",
-    fontWeight: "800",
-    fontSize: 13,
-  },
-  statsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 14,
-  },
+  refreshText: { color: "#ffffff", fontWeight: "800", fontSize: 13, paddingHorizontal: 10, paddingVertical: 4 },
+  statsRow: { flexDirection: "row", gap: 10, marginTop: 14 },
   statCard: {
     flex: 1,
     borderRadius: theme.radius.md,
@@ -520,7 +599,9 @@ const styles = StyleSheet.create({
     borderColor: "#334155",
     ...theme.shadow.soft,
   },
-  asphalt: { backgroundColor: "#1c2333" },
+  asphalt: {
+    backgroundColor: "#1c2333",
+  },
   gridLineH: {
     position: "absolute",
     left: 0,
@@ -671,8 +752,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   tileBase: {
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     position: "relative",
     overflow: "hidden",
   },
@@ -698,10 +779,10 @@ const styles = StyleSheet.create({
   slotOcc: { backgroundColor: "#dc2626" },
   slotMine: {
     backgroundColor: "#2563eb",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: "#93c5fd",
   },
-  tileText: { color: "#fff", fontWeight: "900", zIndex: 2 },
+  tileText: { color: "white", fontWeight: "900", zIndex: 2 },
   bikeText: { fontSize: 6, letterSpacing: 0 },
   carText: { fontSize: 8, letterSpacing: 0 },
   carSilhouette: {
@@ -747,7 +828,7 @@ const styles = StyleSheet.create({
   compass: {
     position: "absolute",
     alignItems: "center",
-    backgroundColor: "#111827",
+    backgroundColor: "#1e293b",
     borderRadius: 20,
     width: 36,
     height: 36,

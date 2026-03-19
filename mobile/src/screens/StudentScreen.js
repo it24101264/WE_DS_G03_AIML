@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, ScrollView, StyleSheet } from "react-native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../api";
 import { theme } from "../ui/theme";
 
@@ -19,6 +20,45 @@ function StatusBadge({ value }) {
   );
 }
 
+const MODULES = [
+  {
+    key: "support",
+    title: "Smart Study Support",
+    subtitle: "Current module",
+    icon: "lightbulb-outline",
+    active: true,
+  },
+  {
+    key: "lost-found",
+    title: "Lost & Found",
+    subtitle: "Link coming soon",
+    icon: "magnify",
+    active: false,
+  },
+  {
+    key: "parking",
+    title: "Parking Management",
+    subtitle: "Open parking module",
+    icon: "car-outline",
+    active: true,
+    route: "Parking",
+  },
+  {
+    key: "marketplace",
+    title: "Marketplace",
+    subtitle: "Link coming soon",
+    icon: "storefront-outline",
+    active: false,
+  },
+  {
+    key: "food",
+    title: "Food",
+    subtitle: "Link coming soon",
+    icon: "silverware-fork-knife",
+    active: false,
+  },
+];
+
 export default function StudentScreen({ navigation, user, onLogout }) {
   const [topic, setTopic] = useState("");
   const [slotMonth, setSlotMonth] = useState("");
@@ -31,6 +71,7 @@ export default function StudentScreen({ navigation, user, onLogout }) {
   const [sessions, setSessions] = useState([]);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -96,8 +137,65 @@ export default function StudentScreen({ navigation, user, onLogout }) {
     setAvailabilitySlots((prev) => prev.filter((s) => s !== slot));
   }
 
+  function handleModulePress(module) {
+    if (module.route) {
+      setMenuOpen(false);
+      navigation.navigate(module.route);
+    }
+  }
+
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
+      <View style={styles.moduleShell}>
+        <View style={styles.moduleHeader}>
+          <View>
+            <Text style={styles.moduleEyebrow}>Campus Hub</Text>
+            <Text style={styles.moduleCaption}>Modules</Text>
+          </View>
+          <Pressable style={styles.moduleToggle} onPress={() => setMenuOpen((prev) => !prev)}>
+            <Text style={styles.moduleToggleText}>{menuOpen ? "Close" : "Menu"}</Text>
+            <MaterialCommunityIcons
+              name={menuOpen ? "close" : "view-grid-outline"}
+              size={18}
+              color="#ffffff"
+            />
+          </Pressable>
+        </View>
+
+        {menuOpen ? (
+          <View style={styles.moduleList}>
+            {MODULES.map((module) => {
+              const isInteractive = Boolean(module.route);
+              return (
+                <Pressable
+                  key={module.key}
+                  style={[styles.moduleItem, module.active && styles.moduleItemActive]}
+                  onPress={() => handleModulePress(module)}
+                  disabled={!isInteractive}
+                >
+                  <View style={styles.moduleIconWrap}>
+                    <MaterialCommunityIcons
+                      name={module.icon}
+                      size={24}
+                      color={module.active ? theme.colors.primary : "#dbe6ff"}
+                    />
+                  </View>
+                  <View style={styles.moduleTextWrap}>
+                    <Text style={[styles.moduleTitle, module.active && styles.moduleTitleActive]}>{module.title}</Text>
+                    <Text style={[styles.moduleSubtitle, module.active && styles.moduleSubtitleActive]}>
+                      {module.subtitle}
+                    </Text>
+                  </View>
+                  {isInteractive ? (
+                    <MaterialCommunityIcons name="chevron-right" size={24} color="#ffffff" />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
+      </View>
+
       <View style={styles.heroCard}>
         <View style={styles.bgOrbOne} />
         <View style={styles.bgOrbTwo} />
@@ -107,14 +205,9 @@ export default function StudentScreen({ navigation, user, onLogout }) {
             <Text style={styles.title}>Student Dashboard</Text>
             <Text style={styles.subtitle}>{user.email}</Text>
           </View>
-          <View style={styles.heroActions}>
-            <Pressable style={styles.parkingBtn} onPress={() => navigation.navigate("Parking")}>
-              <Text style={styles.parkingBtnText}>Parking</Text>
-            </Pressable>
-            <Pressable style={styles.logoutBtn} onPress={onLogout}>
-              <Text style={styles.logoutBtnText}>Logout</Text>
-            </Pressable>
-          </View>
+          <Pressable style={styles.logoutBtn} onPress={onLogout}>
+            <Text style={styles.logoutBtnText}>Logout</Text>
+          </Pressable>
         </View>
 
         <View style={styles.statsRow}>
@@ -259,6 +352,89 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     gap: 12,
   },
+  moduleShell: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.lg,
+    padding: 14,
+    gap: 12,
+    ...theme.shadow.soft,
+  },
+  moduleHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+  },
+  moduleEyebrow: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "900",
+    textTransform: "none",
+  },
+  moduleCaption: {
+    color: "#dfe8ff",
+    fontSize: 11,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1.2,
+    marginTop: 2,
+  },
+  moduleToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: theme.colors.primaryDeep,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: theme.radius.pill,
+  },
+  moduleToggleText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  moduleList: {
+    gap: 10,
+  },
+  moduleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "rgba(13, 48, 153, 0.34)",
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  moduleItemActive: {
+    backgroundColor: "#ffffff",
+  },
+  moduleIconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  moduleTextWrap: {
+    flex: 1,
+  },
+  moduleTitle: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "800",
+  },
+  moduleTitleActive: {
+    color: theme.colors.text,
+  },
+  moduleSubtitle: {
+    color: "#dbe6ff",
+    marginTop: 2,
+    fontSize: 13,
+  },
+  moduleSubtitleActive: {
+    color: theme.colors.textMuted,
+  },
   heroCard: {
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.lg,
@@ -302,22 +478,6 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#e8eeff",
     marginTop: 4,
-  },
-  heroActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  parkingBtn: {
-    backgroundColor: "rgba(255,255,255,0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.24)",
-  },
-  parkingBtnText: {
-    color: "#ffffff",
-    fontWeight: "800",
   },
   logoutBtn: {
     backgroundColor: "#ffffff",
