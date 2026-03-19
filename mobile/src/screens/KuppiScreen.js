@@ -10,8 +10,6 @@ function StatusBadge({ value }) {
     GROUPED: { bg: theme.colors.infoBg, text: theme.colors.infoText },
     SCHEDULED: { bg: theme.colors.successBg, text: theme.colors.successText },
     PUBLISHED: { bg: theme.colors.successBg, text: theme.colors.successText },
-    OPEN: { bg: theme.colors.infoBg, text: theme.colors.infoText },
-    RESOLVED: { bg: theme.colors.successBg, text: theme.colors.successText },
   }[status] || { bg: theme.colors.neutralBg, text: theme.colors.neutralText };
 
   return (
@@ -21,7 +19,7 @@ function StatusBadge({ value }) {
   );
 }
 
-export default function StudentScreen({ navigation, user, onLogout }) {
+export default function KuppiScreen({ user }) {
   const [topic, setTopic] = useState("");
   const [slotMonth, setSlotMonth] = useState("");
   const [slotDate, setSlotDate] = useState("");
@@ -31,29 +29,15 @@ export default function StudentScreen({ navigation, user, onLogout }) {
   const [description, setDescription] = useState("");
   const [mine, setMine] = useState([]);
   const [sessions, setSessions] = useState([]);
-  const [lostFoundItems, setLostFoundItems] = useState([]);
-  const [myLostFoundItems, setMyLostFoundItems] = useState([]);
-  const [lfType, setLfType] = useState("LOST");
-  const [lfTitle, setLfTitle] = useState("");
-  const [lfDescription, setLfDescription] = useState("");
-  const [lfLocation, setLfLocation] = useState("");
-  const [lfContactInfo, setLfContactInfo] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function load() {
     setLoading(true);
     try {
-      const [myReqRes, sessionRes, lostFoundRes, myLostFoundRes] = await Promise.all([
-        api.myRequests(),
-        api.sessions(),
-        api.lostFoundItems(),
-        api.myLostFoundItems(),
-      ]);
+      const [myReqRes, sessionRes] = await Promise.all([api.myRequests(), api.sessions()]);
       setMine(myReqRes.data || []);
       setSessions((sessionRes.data || []).filter((s) => String(s.status || "").toUpperCase() === "PUBLISHED"));
-      setLostFoundItems(lostFoundRes.data || []);
-      setMyLostFoundItems(myLostFoundRes.data || []);
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -112,42 +96,6 @@ export default function StudentScreen({ navigation, user, onLogout }) {
     setAvailabilitySlots((prev) => prev.filter((s) => s !== slot));
   }
 
-  async function submitLostFound() {
-    setErr("");
-    setLoading(true);
-    try {
-      await api.createLostFoundItem({
-        type: lfType,
-        title: lfTitle,
-        description: lfDescription,
-        location: lfLocation,
-        contactInfo: lfContactInfo,
-      });
-      setLfType("LOST");
-      setLfTitle("");
-      setLfDescription("");
-      setLfLocation("");
-      setLfContactInfo("");
-      await load();
-    } catch (e) {
-      setErr(e.message);
-      setLoading(false);
-    }
-  }
-
-  async function toggleMyLostFoundStatus(item) {
-    setErr("");
-    setLoading(true);
-    try {
-      const nextStatus = String(item.status || "").toUpperCase() === "OPEN" ? "RESOLVED" : "OPEN";
-      await api.updateLostFoundStatus(item.id, { status: nextStatus });
-      await load();
-    } catch (e) {
-      setErr(e.message);
-      setLoading(false);
-    }
-  }
-
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
       <View style={styles.heroCard}>
@@ -156,16 +104,8 @@ export default function StudentScreen({ navigation, user, onLogout }) {
 
         <View style={styles.heroTopRow}>
           <View style={styles.flexItem}>
-            <Text style={styles.title}>Student Dashboard</Text>
+            <Text style={styles.title}>Kuppi Sessions</Text>
             <Text style={styles.subtitle}>{user.email}</Text>
-          </View>
-          <View style={styles.heroActions}>
-            <Pressable style={styles.parkingBtn} onPress={() => navigation.navigate("Parking")}>
-              <Text style={styles.parkingBtnText}>Parking</Text>
-            </Pressable>
-            <Pressable style={styles.logoutBtn} onPress={onLogout}>
-              <Text style={styles.logoutBtnText}>Logout</Text>
-            </Pressable>
           </View>
         </View>
 
@@ -297,109 +237,6 @@ export default function StudentScreen({ navigation, user, onLogout }) {
           )}
         />
       </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Post Lost & Found Item</Text>
-        <View style={styles.periodRow}>
-          <Pressable
-            style={[styles.periodChip, lfType === "LOST" && styles.periodChipActive]}
-            onPress={() => setLfType("LOST")}
-          >
-            <Text style={[styles.periodText, lfType === "LOST" && styles.periodTextActive]}>Lost</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.periodChip, lfType === "FOUND" && styles.periodChipActive]}
-            onPress={() => setLfType("FOUND")}
-          >
-            <Text style={[styles.periodText, lfType === "FOUND" && styles.periodTextActive]}>Found</Text>
-          </Pressable>
-        </View>
-        <TextInput
-          placeholder="Item title"
-          placeholderTextColor={theme.colors.textMuted}
-          value={lfTitle}
-          onChangeText={setLfTitle}
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Description"
-          placeholderTextColor={theme.colors.textMuted}
-          value={lfDescription}
-          onChangeText={setLfDescription}
-          style={[styles.input, styles.multilineInput]}
-          multiline
-        />
-        <TextInput
-          placeholder="Location"
-          placeholderTextColor={theme.colors.textMuted}
-          value={lfLocation}
-          onChangeText={setLfLocation}
-          style={styles.input}
-        />
-        <TextInput
-          placeholder="Contact info"
-          placeholderTextColor={theme.colors.textMuted}
-          value={lfContactInfo}
-          onChangeText={setLfContactInfo}
-          style={styles.input}
-        />
-        <View style={styles.row}>
-          <Pressable style={[styles.primaryBtn, loading && styles.btnDisabled]} onPress={submitLostFound} disabled={loading}>
-            <Text style={styles.primaryBtnText}>{loading ? "Posting..." : "Post Item"}</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>My Lost & Found Posts</Text>
-        <FlatList
-          data={myLostFoundItems}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.muted}>You have no posts yet.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <StatusBadge value={item.status} />
-              </View>
-              <Text style={styles.itemText}>{item.type}</Text>
-              <Text style={styles.itemText}>{item.description || "No description"}</Text>
-              <Text style={styles.muted}>Location: {item.location || "N/A"}</Text>
-              <Text style={styles.muted}>Contact: {item.contactInfo || "N/A"}</Text>
-              <View style={styles.row}>
-                <Pressable style={styles.secondaryBtn} onPress={() => toggleMyLostFoundStatus(item)}>
-                  <Text style={styles.secondaryBtnText}>
-                    {String(item.status || "").toUpperCase() === "OPEN" ? "Mark Resolved" : "Reopen"}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-        />
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Campus Lost & Found Feed</Text>
-        <FlatList
-          data={lostFoundItems}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          ListEmptyComponent={<Text style={styles.muted}>No posts yet.</Text>}
-          renderItem={({ item }) => (
-            <View style={styles.listItem}>
-              <View style={styles.rowBetween}>
-                <Text style={styles.itemTitle}>{item.title}</Text>
-                <StatusBadge value={item.status} />
-              </View>
-              <Text style={styles.itemText}>{item.type}</Text>
-              <Text style={styles.itemText}>{item.description || "No description"}</Text>
-              <Text style={styles.muted}>Location: {item.location || "N/A"}</Text>
-              <Text style={styles.muted}>Contact: {item.contactInfo || "N/A"}</Text>
-            </View>
-          )}
-        />
-      </View>
     </ScrollView>
   );
 }
@@ -456,30 +293,6 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#e8eeff",
     marginTop: 4,
-  },
-  heroActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  parkingBtn: {
-    backgroundColor: "rgba(255,255,255,0.16)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radius.sm,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.24)",
-  },
-  parkingBtnText: {
-    color: "#ffffff",
-  },
-  logoutBtn: {
-    backgroundColor: "#ffffff",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: theme.radius.sm,
-  },
-  logoutBtnText: {
-    color: theme.colors.primaryDeep,
   },
   statsRow: {
     flexDirection: "row",

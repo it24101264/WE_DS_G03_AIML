@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: "500",
     letterSpacing: 1,
     fontSize: 11,
   },
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   roleText: {
     color: theme.colors.textMuted,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   roleTextActive: {
     color: "#fff",
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "500",
     fontSize: 15,
   },
   ghostBtn: {
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   ghostBtnText: {
     color: theme.colors.primaryDeep,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   btnDisabled: {
     opacity: 0.7,

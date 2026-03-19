@@ -136,7 +136,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "900",
     color: theme.colors.text,
   },
   subtitle: {
@@ -147,7 +146,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginTop: 10,
     color: theme.colors.primaryDeep,
-    fontWeight: "800",
   },
   section: {
     backgroundColor: "#20304c",
@@ -156,7 +154,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: "#fff",
-    fontWeight: "800",
     marginBottom: 10,
     fontSize: 16,
   },
@@ -184,7 +181,6 @@ const styles = StyleSheet.create({
   },
   slotText: {
     color: "#fff",
-    fontWeight: "800",
   },
   road: {
     height: 38,
@@ -196,7 +192,6 @@ const styles = StyleSheet.create({
   },
   roadText: {
     color: "#fff",
-    fontWeight: "800",
     letterSpacing: 0.8,
   },
 });

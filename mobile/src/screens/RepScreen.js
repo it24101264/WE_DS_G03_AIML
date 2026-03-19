@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   logoutBtnText: {
     color: theme.colors.primaryDeep,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   statsRow: {
     flexDirection: "row",
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     ...theme.shadow.soft,
   },
   cardTitle: {
-    fontWeight: "800",
+    fontWeight: "500",
     color: theme.colors.text,
     fontSize: 16,
     marginBottom: 2,
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "500",
   },
   secondaryBtn: {
     flex: 1,
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: theme.colors.primary,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   rejectBtn: {
     borderRadius: theme.radius.sm,
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   },
   rejectBtnText: {
     color: theme.colors.danger,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   btnDisabled: {
     opacity: 0.7,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   itemTitle: {
-    fontWeight: "700",
+    fontWeight: "500",
     color: theme.colors.text,
     flex: 1,
   },
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   },
   meta: {
     color: theme.colors.neutralText,
-    fontWeight: "700",
+    fontWeight: "500",
     fontSize: 12,
   },
   muted: {
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: "800",
+    fontWeight: "500",
   },
   error: {
     color: theme.colors.danger,

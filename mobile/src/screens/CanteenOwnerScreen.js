@@ -47,13 +47,13 @@ const styles = StyleSheet.create({
   kicker: {
     color: "#9a5b00",
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "600",
     letterSpacing: 1,
   },
   title: {
     color: theme.colors.text,
     fontSize: 30,
-    fontWeight: "900",
+    fontWeight: "500",
   },
   subtitle: {
     color: theme.colors.textMuted,
@@ -72,12 +72,12 @@ const styles = StyleSheet.create({
   roleLabel: {
     color: theme.colors.textMuted,
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "500",
     textTransform: "uppercase",
   },
   roleText: {
     color: theme.colors.text,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   button: {
     marginTop: 4,
@@ -88,6 +88,6 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "500",
   },
 });

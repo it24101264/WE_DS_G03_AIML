@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: theme.colors.primary,
-    fontWeight: "700",
+    fontWeight: "500",
     letterSpacing: 1,
     fontSize: 11,
   },
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 22,
-    fontWeight: "800",
+    fontWeight: "500",
     color: theme.colors.text,
     marginBottom: 4,
   },
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "500",
     fontSize: 15,
   },
   ghostBtn: {
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   ghostBtnText: {
     color: theme.colors.primaryDeep,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   btnDisabled: {
     opacity: 0.7,
