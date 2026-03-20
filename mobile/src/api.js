@@ -44,6 +44,12 @@ export const api = {
       method: "POST",
       body: { minSize, maxClusters, topClusters },
     }),
+  parkingVehicleProfiles: () => apiRequest("/parking/vehicles"),
+  createParkingVehicleProfile: (payload) => apiRequest("/parking/vehicles", { method: "POST", body: payload }),
+  updateParkingVehicleProfile: (id, payload) =>
+    apiRequest(`/parking/vehicles/${encodeURIComponent(id)}`, { method: "PATCH", body: payload }),
+  deleteParkingVehicleProfile: (id) =>
+    apiRequest(`/parking/vehicles/${encodeURIComponent(id)}`, { method: "DELETE" }),
   parkingSlots: () => apiRequest("/parking/slots"),
   parkVehicle: (payload) => apiRequest("/parking/park", { method: "POST", body: payload }),
   leaveParking: (payload) => apiRequest("/parking/leave", { method: "POST", body: payload }),
