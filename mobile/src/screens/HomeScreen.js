@@ -60,9 +60,9 @@ function buildModules(role) {
     },
     {
       ...MODULE_CATALOG.food,
-      route: "CanteenMenu",
-      status: "Available now",
-      available: true,
+      route: role === ROLES.CANTEEN_OWNER ? "CanteenOwner" : null,
+      status: role === ROLES.CANTEEN_OWNER ? "Available now" : "Owner access only",
+      available: role === ROLES.CANTEEN_OWNER,
     },
     {
       ...MODULE_CATALOG.lostFound,
