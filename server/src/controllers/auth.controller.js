@@ -1,7 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
-const CanteenProfile = require("../models/CanteenProfile");
 const { makeId } = require("../utils/id");
 const { normalizeRole, ROLES } = require("../constants/roles");
 
@@ -15,7 +14,7 @@ function signToken(user) {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role = ROLES.STUDENT, canteenName, canteenLocation } = req.body || {};
+    const { name, email, password, role = ROLES.STUDENT } = req.body || {};
     const safeName = String(name || "").trim();
     const safeEmail = String(email || "").trim().toLowerCase();
     const safePassword = String(password || "");
@@ -29,13 +28,6 @@ exports.register = async (req, res) => {
       return res.status(409).json({ success: false, message: "Email already exists" });
     }
 
-    if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
-  return res.status(400).json({
-    success: false,
-    message: "Canteen name and location required"
-  });
-}
-
     const passwordHash = await bcrypt.hash(safePassword, 10);
 
     const user = await User.create({
@@ -45,15 +37,6 @@ exports.register = async (req, res) => {
       passwordHash,
       role: normalizeRole(role, ROLES.STUDENT),
     });
-    if (role === ROLES.CANTEEN_OWNER) {
-  const newCanteen = new CanteenProfile({
-    UserID: user._id, // link to user
-    Name: canteenName,
-    Location: canteenLocation
-  });
-
-  await newCanteen.save();
-}
 
     const token = signToken(user);
 
