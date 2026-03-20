@@ -64,6 +64,7 @@ export default function App() {
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
+        initialRouteName={!user ? "Login" : normalizedRole === ROLES.CANTEEN_OWNER ? "CanteenOwner" : "Home"}
         screenOptions={{
           headerTitleAlign: "left",
           headerStyle: { backgroundColor: theme.colors.surface },
@@ -90,27 +91,14 @@ export default function App() {
           </>
         ) : (
           <>
-            
             {normalizedRole === ROLES.CANTEEN_OWNER ? (
-              <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>
+              <Stack.Screen name="CanteenOwner" options={{ title: "Dashboard" }}>
                 {(props) => (
                   <CanteenOwnerScreen
                     {...props}
                     user={user}
                     onLogout={logout}
                   />
-                )}
-              </Stack.Screen>
-            ) : normalizedRole === "REP" ? (
-              <Stack.Screen name="Rep" options={{ headerShown: false }}>
-                {(props) => (
-                  <RepScreen {...props} user={user} onLogout={logout} />
-                )}
-              </Stack.Screen>
-            ) : normalizedRole === "STUDENT" ? (
-              <Stack.Screen name="Student" options={{ headerShown: false }}>
-                {(props) => (
-                  <StudentScreen {...props} user={user} onLogout={logout} />
                 )}
               </Stack.Screen>
             ) : (
@@ -125,6 +113,41 @@ export default function App() {
                 )}
               </Stack.Screen>
             )}
+
+            {normalizedRole !== ROLES.CANTEEN_OWNER ? (
+              <Stack.Screen name="CanteenOwner" options={{ title: "Dashboard" }}>
+                {(props) => (
+                  <CanteenOwnerScreen
+                    {...props}
+                    user={user}
+                    onLogout={logout}
+                  />
+                )}
+              </Stack.Screen>
+            ) : (
+              <Stack.Screen name="Home" options={{ headerShown: false }}>
+                {(props) => (
+                  <HomeScreen
+                    {...props}
+                    user={user}
+                    normalizedRole={normalizedRole}
+                    onLogout={logout}
+                  />
+                )}
+              </Stack.Screen>
+            )}
+
+            <Stack.Screen name="Rep" options={{ title: "Rep Dashboard" }}>
+              {(props) => (
+                <RepScreen {...props} user={user} onLogout={logout} />
+              )}
+            </Stack.Screen>
+
+            <Stack.Screen name="Student" options={{ title: "Smart Study Support" }}>
+              {(props) => (
+                <StudentScreen {...props} user={user} onLogout={logout} />
+              )}
+            </Stack.Screen>
 
             <Stack.Screen name="CanteenMenu" options={{ title: "Canteen Menu" }}> 
               {(props) => <CanteenMenuScreen {...props} user={user} onLogout={logout} />} 
