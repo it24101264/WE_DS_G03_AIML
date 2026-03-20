@@ -11,12 +11,22 @@ export default function RegisterScreen({ navigation }) {
   const [role, setRole] = useState(ROLES.STUDENT);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const [canteenName, setCanteenName] = useState("");
+  const [canteenLocation, setCanteenLocation] = useState("");
 
   async function register() {
     setErr("");
     setLoading(true);
+    if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
+    setErr("Please enter canteen name and location");
+    setLoading(false);
+    return;
+  }
     try {
-      await api.register({ name, email, password, role });
+      await api.register({ name, email, password, role, 
+        canteenName: role === ROLES.CANTEEN_OWNER ? canteenName : null,
+      canteenLocation: role === ROLES.CANTEEN_OWNER ? canteenLocation : null,
+      });
       navigation.navigate("Login");
     } catch (e) {
       setErr(e.message);
@@ -61,6 +71,24 @@ export default function RegisterScreen({ navigation }) {
           secureTextEntry
           style={styles.input}
         />
+        {role === ROLES.CANTEEN_OWNER && (
+  <>
+    <TextInput
+      placeholder="Canteen Name"
+      placeholderTextColor={theme.colors.textMuted}
+      value={canteenName}
+      onChangeText={setCanteenName}
+      style={styles.input}
+    />
+    <TextInput
+      placeholder="Canteen Location"
+      placeholderTextColor={theme.colors.textMuted}
+      value={canteenLocation}
+      onChangeText={setCanteenLocation}
+      style={styles.input}
+    />
+  </>
+)}
 
         <View style={styles.roleRow}>
           {ROLE_OPTIONS.map((option) => (
