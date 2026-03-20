@@ -17,7 +17,7 @@ const MODULE_CATALOG = {
   },
   food: {
     key: "food",
-    title: "Food Hub",
+    title: "Food Corner",
     icon: "silverware-fork-knife",
   },
   lostFound: {

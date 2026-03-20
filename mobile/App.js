@@ -15,6 +15,7 @@ import LostFoundScreen from "./src/screens/LostFoundScreen";
 import StudentScreen from "./src/screens/StudentScreen";
 import RepScreen from "./src/screens/RepScreen";
 import CanteenOwnerScreen from "./src/screens/CanteenOwnerScreen";
+import CanteenBottomTabs from "./src/screens/CanteenBottomTabs";
 import ParkingScreen from "./src/screens/ParkingScreen";
 import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
 import { normalizeRole, ROLES } from "./src/constants/roles";
@@ -89,69 +90,41 @@ export default function App() {
               component={RegisterScreen}
             />
           </>
+        ) : normalizedRole === ROLES.CANTEEN_OWNER ? (
+          <>
+            <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>
+              {(props) => <CanteenBottomTabs {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+          </>
         ) : (
           <>
-            {normalizedRole === ROLES.CANTEEN_OWNER ? (
-              <Stack.Screen name="CanteenOwner" options={{ title: "Dashboard" }}>
-                {(props) => (
-                  <CanteenOwnerScreen
-                    {...props}
-                    user={user}
-                    onLogout={logout}
-                  />
-                )}
-              </Stack.Screen>
-            ) : (
-              <Stack.Screen name="Home" options={{ headerShown: false }}>
-                {(props) => (
-                  <HomeScreen
-                    {...props}
-                    user={user}
-                    normalizedRole={normalizedRole}
-                    onLogout={logout}
-                  />
-                )}
-              </Stack.Screen>
-            )}
+            <Stack.Screen name="Home" options={{ headerShown: false }}>
+              {(props) => (
+                <HomeScreen
+                  {...props}
+                  user={user}
+                  normalizedRole={normalizedRole}
+                  onLogout={logout}
+                />
+              )}
+            </Stack.Screen>
 
-            {normalizedRole !== ROLES.CANTEEN_OWNER ? (
-              <Stack.Screen name="CanteenOwner" options={{ title: "Dashboard" }}>
-                {(props) => (
-                  <CanteenOwnerScreen
-                    {...props}
-                    user={user}
-                    onLogout={logout}
-                  />
-                )}
-              </Stack.Screen>
-            ) : (
-              <Stack.Screen name="Home" options={{ headerShown: false }}>
-                {(props) => (
-                  <HomeScreen
-                    {...props}
-                    user={user}
-                    normalizedRole={normalizedRole}
-                    onLogout={logout}
-                  />
-                )}
-              </Stack.Screen>
-            )}
+            <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>
+              {(props) => <CanteenBottomTabs {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
 
             <Stack.Screen name="Rep" options={{ title: "Rep Dashboard" }}>
-              {(props) => (
-                <RepScreen {...props} user={user} onLogout={logout} />
-              )}
+              {(props) => <RepScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
 
             <Stack.Screen name="Student" options={{ title: "Smart Study Support" }}>
-              {(props) => (
-                <StudentScreen {...props} user={user} onLogout={logout} />
-              )}
+              {(props) => <StudentScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
 
-            <Stack.Screen name="CanteenMenu" options={{ title: "Canteen Menu" }}> 
-              {(props) => <CanteenMenuScreen {...props} user={user} onLogout={logout} />} 
-              </Stack.Screen>
+            <Stack.Screen name="CanteenMenu" options={{ title: "Food Corner" }}>
+              {(props) => <CanteenMenuScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+
             <Stack.Screen name="Parking" options={{ title: "Parking" }}>
               {(props) => <ParkingScreen {...props} user={user} />}
             </Stack.Screen>
