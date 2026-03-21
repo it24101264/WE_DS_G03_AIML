@@ -53,7 +53,7 @@ export const api = {
   parkingSlots: () => apiRequest("/parking/slots"),
   parkVehicle: (payload) => apiRequest("/parking/park", { method: "POST", body: payload }),
   leaveParking: (payload) => apiRequest("/parking/leave", { method: "POST", body: payload }),
-  myParkingSlot: (username) => apiRequest(`/parking/my-slot/${encodeURIComponent(username)}`),
+  myParkingSlot: () => apiRequest("/parking/my-slot"),
   lostFoundItems: (params = {}) => {
     const search = new URLSearchParams();
     if (params.q) search.set("q", params.q);
