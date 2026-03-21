@@ -11,6 +11,7 @@ router.delete("/vehicles/:id", parkingController.deleteVehicleProfile);
 router.get("/slots", parkingController.getSlots);
 router.post("/park", parkingController.parkVehicle);
 router.post("/leave", parkingController.leaveSlot);
+router.get("/my-slot", parkingController.getMySlot);
 router.get("/my-slot/:username", parkingController.getMySlot);
 
 module.exports = router;

@@ -142,13 +142,17 @@ exports.getSlots = async (_req, res) => {
 
 exports.parkVehicle = async (req, res) => {
   try {
-    const { username, slotId, vehicleProfileId } = req.body || {};
-    const safeUsername = String(username || req.user.email || req.user.id || "").trim();
+    const { slotId, vehicleProfileId } = req.body || {};
+    const safeUsername = String(req.user.email || req.user.id || "").trim();
     const safeSlotId = String(slotId || "").trim();
     const safeVehicleProfileId = String(vehicleProfileId || "").trim();
 
-    if (!safeUsername || !safeSlotId || !safeVehicleProfileId) {
-      return res.status(400).json({ success: false, message: "username, slotId, and vehicleProfileId are required" });
+    if (!safeUsername) {
+      return res.status(401).json({ success: false, message: "Authenticated user identity is required" });
+    }
+
+    if (!safeSlotId || !safeVehicleProfileId) {
+      return res.status(400).json({ success: false, message: "slotId and vehicleProfileId are required" });
     }
 
     const existingActive = await ParkingSession.findOne({
@@ -202,12 +206,11 @@ exports.parkVehicle = async (req, res) => {
 
 exports.leaveSlot = async (req, res) => {
   try {
-    const { username, slotId } = req.body || {};
-    const safeUsername = String(username || req.user.email || req.user.id || "").trim();
+    const { slotId } = req.body || {};
     const safeSlotId = String(slotId || "").trim();
 
-    if (!safeUsername || !safeSlotId) {
-      return res.status(400).json({ success: false, message: "username and slotId are required" });
+    if (!safeSlotId) {
+      return res.status(400).json({ success: false, message: "slotId is required" });
     }
 
     const session = await ParkingSession.findOne({
@@ -236,7 +239,7 @@ exports.leaveSlot = async (req, res) => {
 
 exports.getMySlot = async (req, res) => {
   try {
-    const username = String(req.params.username || req.user.email || req.user.id || "").trim();
+    const username = String(req.user.email || req.user.id || "").trim();
     const activeSession = await ParkingSession.findOne({
       $or: [{ userId: req.user.id }, { username }],
       exitTime: null,

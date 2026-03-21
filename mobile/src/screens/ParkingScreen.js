@@ -41,7 +41,7 @@ export default function ParkingScreen({ user }) {
     try {
       const [slotRes, mySlotRes, profileRes] = await Promise.all([
         api.parkingSlots(),
-        api.myParkingSlot(username),
+        api.myParkingSlot(),
         api.parkingVehicleProfiles(),
       ]);
 
@@ -177,14 +177,14 @@ export default function ParkingScreen({ user }) {
       }
 
       if (mySlot === slotId) {
-        const res = await api.leaveParking({ username, slotId });
+        const res = await api.leaveParking({ slotId });
         Alert.alert(res.message || "Vehicle left successfully");
         setMySlot(null);
         await loadParkingData();
         return;
       }
 
-      const res = await api.parkVehicle({ username, slotId, vehicleProfileId: selectedVehicleId });
+      const res = await api.parkVehicle({ slotId, vehicleProfileId: selectedVehicleId });
       Alert.alert(res.message || "Vehicle parked successfully");
       setMySlot(slotId);
       await loadParkingData();
