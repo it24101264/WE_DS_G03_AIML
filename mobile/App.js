@@ -15,8 +15,10 @@ import LostFoundScreen from "./src/screens/LostFoundScreen";
 import StudentScreen from "./src/screens/StudentScreen";
 import RepScreen from "./src/screens/RepScreen";
 import CanteenOwnerScreen from "./src/screens/CanteenOwnerScreen";
+import CanteenBottomTabs from "./src/screens/CanteenBottomTabs";
 import ParkingScreen from "./src/screens/ParkingScreen";
-import { normalizeRole } from "./src/constants/roles";
+import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
+import { normalizeRole, ROLES } from "./src/constants/roles";
 
 const Stack = createNativeStackNavigator();
 
@@ -35,6 +37,7 @@ const navTheme = {
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const normalizedRole = normalizeRole(user?.role);
 
   async function loadMe() {
@@ -62,6 +65,7 @@ export default function App() {
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
+        initialRouteName={!user ? "Login" : normalizedRole === ROLES.CANTEEN_OWNER ? "CanteenOwner" : "Home"}
         screenOptions={{
           headerTitleAlign: "left",
           headerStyle: { backgroundColor: theme.colors.surface },
@@ -71,12 +75,26 @@ export default function App() {
           contentStyle: { backgroundColor: theme.colors.bg },
         }}
       >
+      
         {!user ? (
           <>
             <Stack.Screen name="Login" options={{ title: "Welcome" }}>
-              {(props) => <LoginScreen {...props} onLoggedIn={loadMe} />}
+              {(props) => (
+                <LoginScreen {...props} onLoggedIn={loadMe} />
+              )}
             </Stack.Screen>
-            <Stack.Screen name="Register" options={{ title: "Create Account" }} component={RegisterScreen} />
+
+            <Stack.Screen
+              name="Register"
+              options={{ title: "Create Account" }}
+              component={RegisterScreen}
+            />
+          </>
+        ) : normalizedRole === ROLES.CANTEEN_OWNER ? (
+          <>
+            <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>
+              {(props) => <CanteenBottomTabs {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
           </>
         ) : (
           <>
@@ -90,27 +108,39 @@ export default function App() {
                 />
               )}
             </Stack.Screen>
-            <Stack.Screen name="Student" options={{ title: "My Kuppi" }}>
-              {(props) => <StudentScreen {...props} user={user} onLogout={logout} />}
+
+            <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>
+              {(props) => <CanteenBottomTabs {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
-            <Stack.Screen name="Rep" options={{ title: "Coordinator" }}>
+
+            <Stack.Screen name="Rep" options={{ title: "Rep Dashboard" }}>
               {(props) => <RepScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
-            <Stack.Screen name="CanteenOwner" options={{ title: "Canteen Owner" }}>
-              {(props) => <CanteenOwnerScreen {...props} user={user} onLogout={logout} />}
+
+            <Stack.Screen name="Student" options={{ title: "Smart Study Support" }}>
+              {(props) => <StudentScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
+
+            <Stack.Screen name="CanteenMenu" options={{ title: "Food Corner" }}>
+              {(props) => <CanteenMenuScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+
             <Stack.Screen name="Parking" options={{ title: "Parking" }}>
               {(props) => <ParkingScreen {...props} user={user} />}
             </Stack.Screen>
+
             <Stack.Screen name="LostFound" options={{ title: "Lost and Found" }}>
               {(props) => <LostFoundScreen {...props} user={user} />}
             </Stack.Screen>
+
             <Stack.Screen name="LostFoundCreate" options={{ title: "Create Post" }}>
               {(props) => <LostFoundCreateScreen {...props} user={user} />}
             </Stack.Screen>
+
             <Stack.Screen name="LostFoundMyPosts" options={{ title: "My Posts" }}>
               {(props) => <LostFoundMyPostsScreen {...props} user={user} />}
             </Stack.Screen>
+
             <Stack.Screen name="LostFoundDetail" options={{ title: "Post Details" }}>
               {(props) => <LostFoundDetailScreen {...props} user={user} />}
             </Stack.Screen>
