@@ -30,6 +30,15 @@ app.use("/api/v1/parking", parkingRoutes);
 const lostFoundRoutes = require("./src/routes/lostFound.routes");
 app.use("/api/v1/lost-found", lostFoundRoutes);
 
+const canteenRoutes = require("./src/routes/canteen");
+app.use("/api/v1/canteen", canteenRoutes);
+
+const adminRoutes = require("./src/routes/canteen");
+app.use("/api/v1/admin", adminRoutes);
+
+const studentRoutes = require("./src/routes/canteenStudent");
+app.use("/api/v1/student", studentRoutes);
+
 const { notFound, errorHandler } = require("./src/middlewares/errorHandler");
 
 // Root route
