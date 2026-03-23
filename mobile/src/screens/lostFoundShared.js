@@ -1,11 +1,45 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { theme } from "../ui/theme";
 
-export const LOCATION_OPTIONS = ["canteen", "auditorium", "lab", "library", "classroom", "parking", "other"];
+export const LOCATION_OPTIONS = [
+  "p-and-s-canteen",
+  "main-basement-canteen",
+  "new-building-canteen",
+  "juice-bar",
+  "anohana-canteen",
+  "birdnest",
+  "auditorium",
+  "new-building",
+  "main-building",
+  "engineering-building",
+  "business-building",
+  "library",
+  "parking",
+  "new-building-study-area-4th",
+  "other",
+];
 export const POST_TYPE_OPTIONS = ["LOST", "FOUND"];
-export const CATEGORY_OPTIONS = ["device", "bag", "book", "id-card", "keys", "wallet", "clothing", "other"];
+export const CATEGORY_OPTIONS = ["device", "bag", "book", "id-card", "keys", "wallet", "clothing", "jewellery","other"];
+
+const LOCATION_LABELS = {
+  "p-and-s-canteen": "P&S Canteen",
+  "main-basement-canteen": "Main Basement Canteen",
+  "new-building-canteen": "New Building Canteen",
+  "juice-bar": "Juice Bar",
+  "anohana-canteen": "Anohana Canteen",
+  birdnest: "BirdNest",
+  auditorium: "Auditorium",
+  "new-building": "New Building",
+  "main-building": "Main Building",
+  "engineering-building": "Engineering Building",
+  "business-building": "Business Building",
+  library: "Library",
+  parking: "Parking",
+  "new-building-study-area-4th": "New Building Study Area (4th)",
+  other: "Other",
+};
 
 const CATEGORY_META = {
   device: { label: "Device", icon: "laptop" },
@@ -15,10 +49,15 @@ const CATEGORY_META = {
   keys: { label: "Keys", icon: "key-variant" },
   wallet: { label: "Wallet", icon: "wallet-outline" },
   clothing: { label: "Clothing", icon: "tshirt-crew-outline" },
+  jewellery: { label: "Jewellery", icon: "ring" },
   other: { label: "Other", icon: "shape-outline" },
 };
 
 export function formatLocation(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (LOCATION_LABELS[normalized]) {
+    return LOCATION_LABELS[normalized];
+  }
   return String(value || "")
     .split("-")
     .join(" ")
@@ -63,7 +102,7 @@ export function StatusBadge({ status }) {
   );
 }
 
-export function LostFoundCard({ item, onPress }) {
+export function LostFoundCard({ item, onPress, onItemFoundPress }) {
   const isFound = item.type === "FOUND";
   const isResolved = item.status === "RESOLVED";
   const accent = isResolved ? "#6b7280" : isFound ? "#1f9d55" : "#d94646";
@@ -74,6 +113,8 @@ export function LostFoundCard({ item, onPress }) {
   return (
     <View style={[shared.outerShell, { backgroundColor: baseTint, borderColor: borderTint }]}>
       <Pressable style={shared.innerCard} onPress={onPress}>
+        {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={shared.cardImage} resizeMode="cover" /> : null}
+
         <View style={[shared.topRow, { borderBottomColor: `${accent}20` }]}>
           <View style={shared.brandRow}>
             <View style={[shared.iconShell, { backgroundColor: `${accent}18`, borderColor: `${accent}40` }]}>
@@ -97,6 +138,13 @@ export function LostFoundCard({ item, onPress }) {
           </View>
           <TypeBadge type={item.type} />
         </View>
+
+        {onItemFoundPress && item.type === "LOST" && item.status === "OPEN" ? (
+          <Pressable style={shared.foundActionBtn} onPress={onItemFoundPress}>
+            <MaterialCommunityIcons name="restore" size={16} color="#ffffff" />
+            <Text style={shared.foundActionText}>Return Item</Text>
+          </Pressable>
+        ) : null}
       </Pressable>
 
       <Text style={[shared.postedText, { color: accent }]}>POSTED {formatRelativeTime(item.createdAt).toUpperCase()}</Text>
@@ -123,6 +171,12 @@ const shared = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(111,124,161,0.18)",
     gap: 12,
+  },
+  cardImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 16,
+    backgroundColor: "#eef3ff",
   },
   topRow: {
     flexDirection: "row",
@@ -186,6 +240,25 @@ const shared = StyleSheet.create({
     color: "#4c5a7f",
     fontWeight: "500",
     fontSize: 12,
+  },
+  foundActionBtn: {
+    marginTop: 4,
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#d94646",
+    borderWidth: 1,
+    borderColor: "#b42318",
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  foundActionText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 13,
   },
   badge: {
     borderRadius: theme.radius.pill,

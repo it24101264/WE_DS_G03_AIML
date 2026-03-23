@@ -137,6 +137,10 @@ export default function App() {
               {(props) => <LostFoundCreateScreen {...props} user={user} />}
             </Stack.Screen>
 
+            <Stack.Screen name="LostFoundEdit" options={{ title: "Edit Post" }}>
+              {(props) => <LostFoundCreateScreen {...props} user={user} />}
+            </Stack.Screen>
+
             <Stack.Screen name="LostFoundMyPosts" options={{ title: "My Posts" }}>
               {(props) => <LostFoundMyPostsScreen {...props} user={user} />}
             </Stack.Screen>
