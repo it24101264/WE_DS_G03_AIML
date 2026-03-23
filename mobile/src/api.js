@@ -66,6 +66,12 @@ export const api = {
   },
   myLostFoundItems: () => apiRequest("/lost-found/mine"),
   lostFoundItemById: (id) => apiRequest(`/lost-found/${encodeURIComponent(id)}`),
+  updateLostFoundItem: (id, payload) =>
+    apiRequest(`/lost-found/${encodeURIComponent(id)}`, { method: "PATCH", body: payload }),
+  deleteLostFoundItem: (id) =>
+    apiRequest(`/lost-found/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  submitLostFoundFoundReport: (id, payload) =>
+    apiRequest(`/lost-found/${encodeURIComponent(id)}/found-reports`, { method: "POST", body: payload }),
   submitLostFoundClaim: (id, payload) =>
     apiRequest(`/lost-found/${encodeURIComponent(id)}/claims`, { method: "POST", body: payload }),
   acceptLostFoundClaim: (id, claimId) =>

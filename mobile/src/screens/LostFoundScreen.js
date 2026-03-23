@@ -222,6 +222,7 @@ export default function LostFoundScreen({ navigation }) {
             key={item.id}
             item={item}
             onPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })}
+            onItemFoundPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })}
           />
         ))}
       </View>
