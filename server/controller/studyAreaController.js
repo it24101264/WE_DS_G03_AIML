@@ -1,5 +1,35 @@
 const StudyArea = require("../models/studyArea");
 
+const DEFAULT_STUDY_AREAS = [
+  {
+    name: "Main Library - Floor 2",
+    latitude: 6.9147,
+    longitude: 79.9729,
+    radius: 120,
+    specialNote: "Silent zone. Keep phone on silent mode.",
+    currentCount: 12,
+    status: "Free"
+  },
+  {
+    name: "Engineering Block - Study Hall",
+    latitude: 6.9141,
+    longitude: 79.9721,
+    radius: 140,
+    specialNote: "Whiteboard and power sockets available.",
+    currentCount: 46,
+    status: "Moderate"
+  },
+  {
+    name: "Business Faculty - Open Lounge",
+    latitude: 6.9153,
+    longitude: 79.9734,
+    radius: 110,
+    specialNote: "Group discussion area.",
+    currentCount: 84,
+    status: "Crowded"
+  }
+];
+
 function getStatus(count) {
   if (count < 25) return "Free";
   if (count <= 75) return "Moderate";
@@ -8,7 +38,13 @@ function getStatus(count) {
 
 exports.getAllAreas = async (req, res) => {
   try {
-    const areas = await StudyArea.find().sort({ createdAt: -1 });
+    let areas = await StudyArea.find().sort({ createdAt: -1 });
+
+    if (areas.length === 0) {
+      await StudyArea.insertMany(DEFAULT_STUDY_AREAS);
+      areas = await StudyArea.find().sort({ createdAt: -1 });
+    }
+
     res.json(areas);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch study areas" });

@@ -1,4 +1,7 @@
-const BASE_URL = "http://localhost:5000/api/study-areas";
+import { API_URLS } from "../config";
+
+const BASE_URL = API_URLS.STUDY_AREAS;
+const LEGACY_BASE_URL = `${BASE_URL.replace(/\/study-areas$/, "")}/v1/study-areas`;
 
 async function request(url, options = {}) {
   console.log("Request URL:", url);
@@ -29,9 +32,21 @@ async function request(url, options = {}) {
 }
 
 export const studyAreaApi = {
-  getAll: () => request(BASE_URL),
+  getAll: async () => {
+    try {
+      return await request(BASE_URL);
+    } catch (_error) {
+      return await request(LEGACY_BASE_URL);
+    }
+  },
 
-  getById: (id) => request(`${BASE_URL}/${id}`),
+  getById: async (id) => {
+    try {
+      return await request(`${BASE_URL}/${id}`);
+    } catch (_error) {
+      return await request(`${LEGACY_BASE_URL}/${id}`);
+    }
+  },
 
   create: (payload) =>
     request(BASE_URL, {
@@ -50,9 +65,17 @@ export const studyAreaApi = {
       method: "DELETE"
     }),
 
-  updateCount: (id, action) =>
-    request(`${BASE_URL}/update-count/${id}`, {
-      method: "POST",
-      body: JSON.stringify({ action })
-    })
+  updateCount: async (id, action) => {
+    try {
+      return await request(`${BASE_URL}/update-count/${id}`, {
+        method: "POST",
+        body: JSON.stringify({ action })
+      });
+    } catch (_error) {
+      return await request(`${LEGACY_BASE_URL}/update-count/${id}`, {
+        method: "POST",
+        body: JSON.stringify({ action })
+      });
+    }
+  }
 };

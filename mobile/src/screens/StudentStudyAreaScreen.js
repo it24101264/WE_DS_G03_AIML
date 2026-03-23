@@ -13,20 +13,61 @@ import { studyAreaApi } from "../api/api";
 import StudyAreaCard from "../components/StudyAreaCard";
 import { theme } from "../constants/theme";
 
+function distanceInMeters(lat1, lon1, lat2, lon2) {
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadius = 6371000;
+  const dLat = toRadians(lat2 - lat1);
+  const dLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(earthRadius * c);
+}
+
 export default function StudentStudyAreaScreen({ navigation }) {
   const [areas, setAreas] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
+  const [locationLabel, setLocationLabel] = useState("Location not detected");
+  const [userCoords, setUserCoords] = useState(null);
 
   async function loadAreas() {
     const data = await studyAreaApi.getAll();
-    setAreas(data);
+    const nextAreas = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+    setAreas(nextAreas);
+    setError("");
   }
 
   async function requestLocationOnOpen() {
     try {
+      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.geolocation) {
+        await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const coords = {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              };
+              setUserCoords(coords);
+              setLocationLabel("Location enabled from browser");
+              resolve(coords);
+            },
+            () => reject(new Error("Browser location permission denied")),
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 30000
+            }
+          );
+        });
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
 
       if (status !== "granted") {
+        setLocationLabel("Location permission denied");
         Alert.alert(
           "Location Permission Required",
           "Please allow location permission to use the study area feature."
@@ -37,6 +78,7 @@ export default function StudentStudyAreaScreen({ navigation }) {
       const servicesEnabled = await Location.hasServicesEnabledAsync();
 
       if (!servicesEnabled) {
+        setLocationLabel("Location service disabled");
         Alert.alert(
           "Turn On Location",
           "Please turn on location services on your phone to use this feature."
@@ -45,11 +87,31 @@ export default function StudentStudyAreaScreen({ navigation }) {
       }
 
       const currentLocation = await Location.getCurrentPositionAsync({});
+      setUserCoords({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude
+      });
+      setLocationLabel("Location enabled");
       console.log("Student location:", currentLocation.coords);
     } catch (error) {
+      setLocationLabel("Location unavailable");
       Alert.alert("Location Error", error.message);
     }
   }
+
+  const sortedAreas = userCoords
+    ? [...areas]
+        .map((area) => ({
+          ...area,
+          distanceMeters: distanceInMeters(
+            userCoords.latitude,
+            userCoords.longitude,
+            Number(area.latitude),
+            Number(area.longitude)
+          )
+        }))
+        .sort((a, b) => a.distanceMeters - b.distanceMeters)
+    : areas;
 
   async function refreshAll() {
     try {
@@ -57,6 +119,7 @@ export default function StudentStudyAreaScreen({ navigation }) {
       await loadAreas();
       await requestLocationOnOpen();
     } catch (error) {
+      setError(error.message || "Could not load study areas");
       Alert.alert("Error", error.message);
     } finally {
       setRefreshing(false);
@@ -65,7 +128,9 @@ export default function StudentStudyAreaScreen({ navigation }) {
 
   useEffect(() => {
     requestLocationOnOpen();
-    loadAreas();
+    loadAreas().catch((error) => {
+      setError(error.message || "Could not load study areas");
+    });
   }, []);
 
   const freeCount = areas.filter((a) => a.status === "Free").length;
@@ -105,11 +170,22 @@ export default function StudentStudyAreaScreen({ navigation }) {
       </View>
 
       <Text style={styles.sectionTitle}>Campus Study Area List</Text>
+      <Text style={styles.helperText}>{locationLabel}</Text>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {sortedAreas.length === 0 ? (
+        <Text style={styles.emptyText}>No study areas found yet. Open Admin Study Areas and add a location.</Text>
+      ) : null}
 
-      {areas.map((area) => (
+      {sortedAreas.map((area) => (
         <StudyAreaCard
           key={area._id}
-          area={area}
+          area={{
+            ...area,
+            specialNote:
+              area.distanceMeters !== undefined
+                ? `${area.specialNote ? `${area.specialNote} | ` : ""}${area.distanceMeters}m away`
+                : area.specialNote
+          }}
           onPress={() =>
             navigation.navigate("StudyAreaDetails", { areaId: area._id })
           }
@@ -187,6 +263,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
     color: theme.colors.text,
+    marginBottom: 12
+  },
+  errorText: {
+    color: theme.colors.crowdedText,
+    marginBottom: 12,
+    fontWeight: "700"
+  },
+  helperText: {
+    color: theme.colors.textMuted,
+    marginBottom: 10,
+    fontWeight: "700"
+  },
+  emptyText: {
+    color: theme.colors.textMuted,
     marginBottom: 12
   }
 });
