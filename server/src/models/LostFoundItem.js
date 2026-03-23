@@ -1,10 +1,27 @@
 const mongoose = require("mongoose");
 
-const LOCATION_VALUES = ["canteen", "auditorium", "lab", "library", "classroom", "parking", "other"];
+const LOCATION_VALUES = [
+  "p-and-s-canteen",
+  "main-basement-canteen",
+  "new-building-canteen",
+  "juice-bar",
+  "anohana-canteen",
+  "birdnest",
+  "auditorium",
+  "new-building",
+  "main-building",
+  "engineering-building",
+  "business-building",
+  "library",
+  "parking",
+  "new-building-study-area-4th",
+  "other",
+];
 const TYPE_VALUES = ["LOST", "FOUND"];
-const CATEGORY_VALUES = ["device", "bag", "book", "id-card", "keys", "wallet", "clothing", "other"];
+const CATEGORY_VALUES = ["device", "bag", "book", "id-card", "keys", "wallet", "clothing", "jewellery", "other"];
 const STATUS_VALUES = ["OPEN", "RESOLVED"];
 const CLAIM_STATUS_VALUES = ["PENDING", "ACCEPTED", "REJECTED"];
+const FOUND_REPORT_STATUS_VALUES = ["PENDING", "SEEN"];
 
 const claimSchema = new mongoose.Schema(
   {
@@ -18,6 +35,19 @@ const claimSchema = new mongoose.Schema(
   { timestamps: true, _id: false }
 );
 
+const foundReportSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true },
+    userId: { type: String, required: true, index: true },
+    userName: { type: String, required: true, trim: true },
+    userEmail: { type: String, required: true, trim: true, lowercase: true },
+    contactDetails: { type: String, required: true, trim: true },
+    note: { type: String, default: "", trim: true },
+    status: { type: String, enum: FOUND_REPORT_STATUS_VALUES, default: "PENDING" },
+  },
+  { timestamps: true, _id: false }
+);
+
 const lostFoundItemSchema = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true, index: true },
@@ -27,12 +57,14 @@ const lostFoundItemSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     titleKey: { type: String, required: true, trim: true, index: true },
     description: { type: String, default: "", trim: true },
+    imageUrl: { type: String, default: "", trim: true },
     location: { type: String, enum: LOCATION_VALUES, required: true, index: true },
     type: { type: String, enum: TYPE_VALUES, required: true, index: true },
     category: { type: String, enum: CATEGORY_VALUES, required: true, index: true },
     status: { type: String, enum: STATUS_VALUES, default: "OPEN" },
     claimQuestion: { type: String, default: "", trim: true },
     claims: { type: [claimSchema], default: [] },
+    foundReports: { type: [foundReportSchema], default: [] },
     acceptedClaimId: { type: String, default: "" },
   },
   { timestamps: true }
@@ -44,3 +76,4 @@ module.exports.TYPE_VALUES = TYPE_VALUES;
 module.exports.CATEGORY_VALUES = CATEGORY_VALUES;
 module.exports.STATUS_VALUES = STATUS_VALUES;
 module.exports.CLAIM_STATUS_VALUES = CLAIM_STATUS_VALUES;
+module.exports.FOUND_REPORT_STATUS_VALUES = FOUND_REPORT_STATUS_VALUES;

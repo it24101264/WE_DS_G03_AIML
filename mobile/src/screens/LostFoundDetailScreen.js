@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../api";
 import { theme } from "../ui/theme";
 import { categoryMeta, formatLocation, formatRelativeTime, StatusBadge, TypeBadge } from "./lostFoundShared";
 
-export default function LostFoundDetailScreen({ route, user }) {
+export default function LostFoundDetailScreen({ navigation, route, user }) {
   const itemId = route?.params?.itemId;
   const [item, setItem] = useState(null);
   const [claimAnswer, setClaimAnswer] = useState("");
+  const [foundContactDetails, setFoundContactDetails] = useState("");
+  const [foundNote, setFoundNote] = useState("");
   const [claimLoading, setClaimLoading] = useState(false);
+  const [foundReportLoading, setFoundReportLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [error, setError] = useState("");
 
   async function loadItem() {
@@ -50,6 +55,8 @@ export default function LostFoundDetailScreen({ route, user }) {
   const heroTone = isResolved ? "resolved" : isFound ? "found" : "lost";
   const claims = Array.isArray(item.claims) ? item.claims : [];
   const myClaim = item.myClaim || null;
+  const foundReports = Array.isArray(item.foundReports) ? item.foundReports : [];
+  const myFoundReport = item.myFoundReport || null;
 
   async function toggleStatus() {
     try {
@@ -89,6 +96,41 @@ export default function LostFoundDetailScreen({ route, user }) {
       setError(err.message || "Could not accept claim");
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function submitFoundReport() {
+    try {
+      setFoundReportLoading(true);
+      const res = await api.submitLostFoundFoundReport(item.id, {
+        contactDetails: foundContactDetails,
+        note: foundNote,
+      });
+      setItem(res.data || item);
+      setFoundContactDetails("");
+      setFoundNote("");
+      setError("");
+    } catch (err) {
+      setError(err.message || "Could not share your contact details");
+    } finally {
+      setFoundReportLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      setDeleteLoading(true);
+      await api.deleteLostFoundItem(item.id);
+      setError("");
+      navigation.reset({
+        index: 1,
+        routes: [{ name: "LostFound" }, { name: "LostFoundMyPosts" }],
+      });
+    } catch (err) {
+      const message = err.message || "Could not delete post";
+      setError(message);
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -142,8 +184,59 @@ export default function LostFoundDetailScreen({ route, user }) {
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Description</Text>
+        {item.imageUrl ? <Image source={{ uri: item.imageUrl }} style={styles.itemImage} resizeMode="cover" /> : null}
         <Text style={styles.body}>{item.description}</Text>
       </View>
+
+      {!isFound && !isOwner ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Return Item</Text>
+          {myFoundReport ? (
+            <>
+              <Text style={styles.metaLine}>You already shared your contact details with the post owner.</Text>
+              <Text style={styles.claimAnswerLabel}>Your Contact Details</Text>
+              <Text style={styles.body}>{myFoundReport.contactDetails}</Text>
+              {myFoundReport.note ? (
+                <>
+                  <Text style={styles.claimAnswerLabel}>Your Note</Text>
+                  <Text style={styles.body}>{myFoundReport.note}</Text>
+                </>
+              ) : null}
+            </>
+          ) : item.status === "OPEN" ? (
+            <>
+              <Text style={styles.helperText}>
+                If you found this item, share your contact details. Only the lost person will be able to see them.
+              </Text>
+              <TextInput
+                placeholder="Phone number, email, or where to contact you"
+                placeholderTextColor={theme.colors.textMuted}
+                value={foundContactDetails}
+                onChangeText={setFoundContactDetails}
+                style={[styles.input, styles.multilineInput]}
+                multiline
+              />
+              <TextInput
+                placeholder="Optional note"
+                placeholderTextColor={theme.colors.textMuted}
+                value={foundNote}
+                onChangeText={setFoundNote}
+                style={[styles.input, styles.multilineInput]}
+                multiline
+              />
+              <Pressable
+                style={[styles.foundBtn, foundReportLoading && styles.btnDisabled]}
+                onPress={submitFoundReport}
+                disabled={foundReportLoading}
+              >
+                <Text style={styles.foundBtnText}>{foundReportLoading ? "Sending..." : "Return Item"}</Text>
+              </Pressable>
+            </>
+          ) : (
+            <Text style={styles.metaLine}>This item is already resolved.</Text>
+          )}
+        </View>
+      ) : null}
 
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Post Details</Text>
@@ -151,11 +244,42 @@ export default function LostFoundDetailScreen({ route, user }) {
         <Text style={styles.metaLine}>Type: {item.type}</Text>
         <Text style={styles.metaLine}>Status: {item.status}</Text>
         {isOwner ? (
-          <Pressable style={[styles.statusBtn, actionLoading && styles.btnDisabled]} onPress={toggleStatus} disabled={actionLoading}>
-            <Text style={styles.statusBtnText}>
-              {actionLoading ? "Saving..." : item.status === "RESOLVED" ? "Mark as Open" : "Mark as Resolved"}
-            </Text>
-          </Pressable>
+          <View style={styles.ownerActionRow}>
+            <Pressable style={[styles.statusBtn, actionLoading && styles.btnDisabled]} onPress={toggleStatus} disabled={actionLoading}>
+              <Text style={styles.statusBtnText}>
+                {actionLoading ? "Saving..." : item.status === "RESOLVED" ? "Mark as Open" : "Mark as Resolved"}
+              </Text>
+            </Pressable>
+            {!confirmDelete ? (
+              <Pressable
+                style={[styles.deleteBtn, deleteLoading && styles.btnDisabled]}
+                onPress={() => setConfirmDelete(true)}
+                disabled={deleteLoading}
+              >
+                <Text style={styles.deleteBtnText}>Delete Post</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.confirmDeleteBox}>
+                <Text style={styles.confirmDeleteText}>Delete this post permanently?</Text>
+                <View style={styles.confirmDeleteActions}>
+                  <Pressable
+                    style={[styles.cancelDeleteBtn, deleteLoading && styles.btnDisabled]}
+                    onPress={() => setConfirmDelete(false)}
+                    disabled={deleteLoading}
+                  >
+                    <Text style={styles.cancelDeleteBtnText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.deleteBtn, deleteLoading && styles.btnDisabled]}
+                    onPress={handleDelete}
+                    disabled={deleteLoading}
+                  >
+                    <Text style={styles.deleteBtnText}>{deleteLoading ? "Deleting..." : "Confirm Delete"}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
+          </View>
         ) : null}
       </View>
 
@@ -235,6 +359,42 @@ export default function LostFoundDetailScreen({ route, user }) {
             </View>
           ) : (
             <Text style={styles.metaLine}>No one has tried to claim this item yet.</Text>
+          )}
+        </View>
+      ) : null}
+
+      {!isFound && isOwner ? (
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Finder Contact Details</Text>
+          {foundReports.length ? (
+            <View style={styles.claimList}>
+              {foundReports.map((report) => (
+                <View key={report.id} style={styles.claimCard}>
+                  <View style={styles.claimHeader}>
+                    <View>
+                      <Text style={styles.claimName}>{report.userName}</Text>
+                      <Text style={styles.claimMeta}>{report.userEmail}</Text>
+                    </View>
+                    <View style={[styles.claimStatusPill, claimStatusStyles[report.status] || claimStatusStyles.PENDING]}>
+                      <Text style={[styles.claimStatusText, claimStatusTextStyles[report.status] || claimStatusTextStyles.PENDING]}>
+                        {report.status}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.claimMeta}>Shared {formatRelativeTime(report.createdAt)}</Text>
+                  <Text style={styles.claimAnswerLabel}>Contact Details</Text>
+                  <Text style={styles.body}>{report.contactDetails}</Text>
+                  {report.note ? (
+                    <>
+                      <Text style={styles.claimAnswerLabel}>Note</Text>
+                      <Text style={styles.body}>{report.note}</Text>
+                    </>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.metaLine}>No one has shared finder details yet.</Text>
           )}
         </View>
       ) : null}
@@ -343,6 +503,12 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontWeight: "800", color: theme.colors.text, fontSize: 16 },
   body: { color: theme.colors.neutralText, lineHeight: 22 },
+  itemImage: {
+    width: "100%",
+    height: 240,
+    borderRadius: 18,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
   metaLine: { color: "#42506a", lineHeight: 22, fontWeight: "600" },
   helperText: { color: theme.colors.textMuted, lineHeight: 20 },
   input: {
@@ -355,14 +521,42 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   multilineInput: { minHeight: 84, textAlignVertical: "top" },
+  ownerActionRow: { marginTop: 8, gap: 10 },
   statusBtn: {
-    marginTop: 8,
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.sm,
     alignItems: "center",
     paddingVertical: 11,
   },
   statusBtnText: { color: "#ffffff", fontWeight: "800" },
+  deleteBtn: {
+    backgroundColor: "#fff1f1",
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: "#f1b6b6",
+    alignItems: "center",
+    paddingVertical: 11,
+  },
+  deleteBtnText: { color: "#b42318", fontWeight: "800" },
+  confirmDeleteBox: {
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: "#f1b6b6",
+    backgroundColor: "#fff7f7",
+    padding: 12,
+    gap: 10,
+  },
+  confirmDeleteText: { color: "#7a271a", fontWeight: "700" },
+  confirmDeleteActions: { flexDirection: "column", gap: 10 },
+  cancelDeleteBtn: {
+    backgroundColor: theme.colors.surfaceAlt,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: "center",
+    paddingVertical: 11,
+  },
+  cancelDeleteBtnText: { color: theme.colors.text, fontWeight: "800" },
   claimBtn: {
     backgroundColor: "#1d9b57",
     borderRadius: theme.radius.sm,
@@ -370,6 +564,13 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   claimBtnText: { color: "#ffffff", fontWeight: "800" },
+  foundBtn: {
+    backgroundColor: "#1d9b57",
+    borderRadius: theme.radius.sm,
+    alignItems: "center",
+    paddingVertical: 11,
+  },
+  foundBtnText: { color: "#ffffff", fontWeight: "800" },
   claimList: { gap: 10 },
   claimCard: {
     borderRadius: 18,
@@ -408,10 +609,12 @@ const claimStatusStyles = StyleSheet.create({
   PENDING: { backgroundColor: "#fff4d6", borderColor: "#f0cf75" },
   ACCEPTED: { backgroundColor: "#dff8ef", borderColor: "#8ed4b8" },
   REJECTED: { backgroundColor: "#eceff4", borderColor: "#c9d0db" },
+  SEEN: { backgroundColor: "#e8f1ff", borderColor: "#b7cff7" },
 });
 
 const claimStatusTextStyles = StyleSheet.create({
   PENDING: { color: "#8a6116" },
   ACCEPTED: { color: "#136548" },
   REJECTED: { color: "#586577" },
+  SEEN: { color: "#2157f2" },
 });
