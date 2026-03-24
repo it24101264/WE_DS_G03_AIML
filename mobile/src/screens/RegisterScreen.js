@@ -18,18 +18,14 @@ export default function RegisterScreen({ navigation }) {
     setErr("");
     setLoading(true);
     if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
-      setErr("Please enter canteen name and location");
-      setLoading(false);
-      return;
-    }
+    setErr("Please enter canteen name and location");
+    setLoading(false);
+    return;
+  }
     try {
-      await api.register({
-        name,
-        email,
-        password,
-        role,
+      await api.register({ name, email, password, role, 
         canteenName: role === ROLES.CANTEEN_OWNER ? canteenName : null,
-        canteenLocation: role === ROLES.CANTEEN_OWNER ? canteenLocation : null
+      canteenLocation: role === ROLES.CANTEEN_OWNER ? canteenLocation : null,
       });
       navigation.navigate("Login");
     } catch (e) {

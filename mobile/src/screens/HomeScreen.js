@@ -10,11 +10,6 @@ const MODULE_CATALOG = {
     title: "Smart Study Support",
     icon: "lightbulb-on-outline",
   },
-  studyAreas: {
-    key: "studyAreas",
-    title: "Study Areas",
-    icon: "book-open-page-variant-outline",
-  },
   parking: {
     key: "parking",
     title: "Parking Management",
@@ -55,12 +50,6 @@ function buildModules(role) {
           : role === ROLES.CANTEEN_OWNER
             ? "Role dashboard"
             : "Student tools",
-      available: true,
-    },
-    {
-      ...MODULE_CATALOG.studyAreas,
-      route: "StudentStudyAreas",
-      status: "Available now",
       available: true,
     },
     {
@@ -135,7 +124,6 @@ export default function HomeScreen({ navigation, user, normalizedRole, onLogout 
               style={[
                 styles.iconWrap,
                 module.key === "support" && styles.iconWrapBlue,
-                module.key === "studyAreas" && styles.iconWrapIndigo,
                 module.key === "parking" && styles.iconWrapTeal,
                 module.key === "food" && styles.iconWrapGold,
                 module.key === "lostFound" && styles.iconWrapRose,
@@ -265,9 +253,6 @@ const styles = StyleSheet.create({
   },
   iconWrapBlue: {
     backgroundColor: "#3972ff",
-  },
-  iconWrapIndigo: {
-    backgroundColor: "#3357d6",
   },
   iconWrapTeal: {
     backgroundColor: "#0f9f8f",
