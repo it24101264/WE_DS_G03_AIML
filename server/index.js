@@ -39,6 +39,10 @@ app.use("/api/v1/admin", adminRoutes);
 const studentRoutes = require("./src/routes/canteenStudent");
 app.use("/api/v1/student", studentRoutes);
 
+const studyAreaRoutes = require("./routes/studyAreaRoutes");
+app.use("/api/study-areas", studyAreaRoutes);
+app.use("/api/v1/study-areas", studyAreaRoutes);
+
 const { notFound, errorHandler } = require("./src/middlewares/errorHandler");
 
 // Root route
