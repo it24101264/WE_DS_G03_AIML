@@ -19,6 +19,13 @@ import CanteenBottomTabs from "./src/screens/CanteenBottomTabs";
 import ParkingScreen from "./src/screens/ParkingScreen";
 import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
 import { normalizeRole, ROLES } from "./src/constants/roles";
+import MarketplaceHome from "./src/screens/marketplace/Home";
+import MarketplaceBrowse from "./src/screens/marketplace/Browse";
+import MarketplaceItemDetail from "./src/screens/marketplace/ItemDetail";
+import MarketplaceDashboard from "./src/screens/marketplace/Dashboard";
+import MarketplaceSavedItems from "./src/screens/marketplace/SavedItems";
+import MarketplaceMyRequests from "./src/screens/marketplace/MyRequests";
+import MarketplaceProfile from "./src/screens/marketplace/Profile";
 
 const Stack = createNativeStackNavigator();
 
@@ -147,6 +154,34 @@ export default function App() {
 
             <Stack.Screen name="LostFoundDetail" options={{ title: "Post Details" }}>
               {(props) => <LostFoundDetailScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceHome" options={{ title: "Marketplace" }}>
+              {(props) => <MarketplaceHome {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceBrowse" options={{ title: "Browse Items" }}>
+              {(props) => <MarketplaceBrowse {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceItemDetail" options={{ title: "Item Details" }}>
+              {(props) => <MarketplaceItemDetail {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceDashboard" options={{ title: "Marketplace Dashboard" }}>
+              {(props) => <MarketplaceDashboard {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceSavedItems" options={{ title: "Saved Items" }}>
+              {(props) => <MarketplaceSavedItems {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceMyRequests" options={{ title: "My Requests" }}>
+              {(props) => <MarketplaceMyRequests {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceProfile" options={{ title: "Marketplace Profile" }}>
+              {(props) => <MarketplaceProfile {...props} user={user} />}
             </Stack.Screen>
           </>
         )}

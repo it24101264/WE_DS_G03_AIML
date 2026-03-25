@@ -8,6 +8,11 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: roleValues, default: ROLES.STUDENT },
+    studentId: { type: String, trim: true, default: "" },
+    faculty: { type: String, trim: true, default: "" },
+    phone: { type: String, trim: true, default: "" },
+    bio: { type: String, trim: true, default: "" },
+    savedItems: [{ type: mongoose.Schema.Types.ObjectId, ref: "MarketplaceItem" }],
   },
   { timestamps: true }
 );

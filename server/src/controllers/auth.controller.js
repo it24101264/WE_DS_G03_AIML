@@ -15,18 +15,32 @@ function signToken(user) {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role = ROLES.STUDENT, canteenName, canteenLocation } = req.body || {};
+    const {
+      name,
+      email,
+      password,
+      studentId,
+      role = ROLES.STUDENT,
+      canteenName,
+      canteenLocation,
+    } = req.body || {};
     const safeName = String(name || "").trim();
     const safeEmail = String(email || "").trim().toLowerCase();
     const safePassword = String(password || "");
+    const safeStudentId = String(studentId || "").trim();
 
-    if (!safeName || !safeEmail || !safePassword) {
+    if (!safeName || !safeEmail || !safePassword || !safeStudentId) {
       return res.status(400).json({ success: false, message: "Missing fields" });
     }
 
-    const exists = await User.findOne({ email: safeEmail }).lean();
+    const exists = await User.findOne({
+      $or: [{ email: safeEmail }, { studentId: safeStudentId }],
+    }).lean();
     if (exists) {
-      return res.status(409).json({ success: false, message: "Email already exists" });
+      return res.status(409).json({
+        success: false,
+        message: exists.email === safeEmail ? "Email already exists" : "Student ID already exists",
+      });
     }
     if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
   return res.status(400).json({
@@ -41,6 +55,7 @@ exports.register = async (req, res) => {
       id: makeId("u_"),
       name: safeName,
       email: safeEmail,
+      studentId: safeStudentId,
       passwordHash,
       role: normalizeRole(role, ROLES.STUDENT),
     });
@@ -59,7 +74,13 @@ exports.register = async (req, res) => {
     return res.status(201).json({
       success: true,
       token,
-      data: { id: user.id, name: user.name, email: user.email, role: user.role },
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        studentId: user.studentId || "",
+        role: user.role,
+      },
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -69,15 +90,18 @@ exports.register = async (req, res) => {
 // POST /api/v1/auth/login
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body || {};
+    const { email, password, studentId } = req.body || {};
     const safeEmail = String(email || "").trim().toLowerCase();
     const safePassword = String(password || "");
+    const safeStudentId = String(studentId || "").trim();
 
-    if (!safeEmail || !safePassword) {
-      return res.status(400).json({ success: false, message: "email and password required" });
+    if (!safeEmail || !safePassword || !safeStudentId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "email, studentId and password required" });
     }
 
-    const user = await User.findOne({ email: safeEmail }).lean();
+    const user = await User.findOne({ email: safeEmail, studentId: safeStudentId }).lean();
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
@@ -92,7 +116,13 @@ exports.login = async (req, res) => {
     return res.status(200).json({
       success: true,
       token,
-      data: { id: user.id, name: user.name, email: user.email, role: user.role },
+      data: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        studentId: user.studentId || "",
+        role: user.role,
+      },
     });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });

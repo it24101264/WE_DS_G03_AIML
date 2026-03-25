@@ -18,8 +18,9 @@ function inferHost() {
 }
 
 const explicitBase = process.env.EXPO_PUBLIC_API_BASE;
+const explicitHost = process.env.EXPO_PUBLIC_API_HOST;
 
-export const API_BASE = explicitBase || `http://${inferHost()}:5001/api/v1`;
+export const API_BASE = explicitBase || `http://${explicitHost || inferHost()}:5000/api/v1`;
 
 export const API_URLS = {
     AUTH: `${API_BASE}/auth`,

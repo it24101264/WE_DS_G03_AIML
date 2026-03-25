@@ -6,15 +6,20 @@ import { theme } from "../ui/theme";
 
 export default function LoginScreen({ navigation, onLoggedIn }) {
   const [email, setEmail] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function login() {
     setErr("");
+    if (!email.trim() || !studentId.trim() || !password) {
+      setErr("Email, Student ID, and password are required.");
+      return;
+    }
     setLoading(true);
     try {
-      const res = await api.login({ email, password });
+      const res = await api.login({ email, studentId, password });
       await AsyncStorage.setItem("token", res.token);
       await onLoggedIn();
     } catch (e) {
@@ -45,6 +50,14 @@ export default function LoginScreen({ navigation, onLoggedIn }) {
           autoCapitalize="none"
           value={email}
           onChangeText={setEmail}
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Student ID Number"
+          placeholderTextColor={theme.colors.textMuted}
+          autoCapitalize="none"
+          value={studentId}
+          onChangeText={setStudentId}
           style={styles.input}
         />
         <TextInput

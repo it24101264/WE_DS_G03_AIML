@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "seed:parking": "node seedParkingSlots.js"
+    "seed:parking": "node seedParkingSlots.js",
+    "test": "jest --testEnvironment node --runInBand --forceExit --detectOpenHandles"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +21,17 @@
     "mongoose": "^9.2.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "jest": "^29.0.0",
+    "mongodb-memory-server": "^10.3.0",
+    "nodemon": "^3.1.11",
+    "supertest": "^6.3.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "testTimeout": 15000
   }
 
 }

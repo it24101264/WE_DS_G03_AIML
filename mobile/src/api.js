@@ -81,4 +81,31 @@ export const api = {
   updateLostFoundItemStatus: (id, payload) =>
     apiRequest(`/lost-found/${encodeURIComponent(id)}/status`, { method: "PATCH", body: payload }),
   createLostFoundItem: (payload) => apiRequest("/lost-found", { method: "POST", body: payload }),
+
+  marketplaceMe: () => apiRequest("/marketplace/auth/me"),
+  marketplaceItems: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && String(value) !== "") {
+        query.set(key, value);
+      }
+    });
+    const qs = query.toString();
+    return apiRequest(`/marketplace/items${qs ? `?${qs}` : ""}`);
+  },
+  marketplaceFeaturedItems: () => apiRequest("/marketplace/items/featured"),
+  marketplaceItemById: (id) => apiRequest(`/marketplace/items/${encodeURIComponent(id)}`),
+  marketplaceToggleSave: (id) => apiRequest(`/marketplace/items/${encodeURIComponent(id)}/save`, { method: "POST" }),
+
+  marketplaceCreateRequest: (payload) => apiRequest("/marketplace/requests", { method: "POST", body: payload }),
+  marketplaceMyRequests: () => apiRequest("/marketplace/requests/my"),
+  marketplaceUpdateRequest: (id, payload) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(id)}`, { method: "PUT", body: payload }),
+  marketplaceCancelRequest: (id) => apiRequest(`/marketplace/requests/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  marketplaceProfile: () => apiRequest("/marketplace/users/profile"),
+  marketplaceUpdateProfile: (payload) =>
+    apiRequest("/marketplace/users/profile", { method: "PUT", body: payload }),
+  marketplaceSavedItems: () => apiRequest("/marketplace/users/saved"),
+  marketplaceDeleteAccount: () => apiRequest("/marketplace/users/account", { method: "DELETE" }),
 };

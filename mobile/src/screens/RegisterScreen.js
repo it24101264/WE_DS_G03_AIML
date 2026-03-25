@@ -7,6 +7,7 @@ import { ROLE_OPTIONS, ROLES } from "../constants/roles";
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [studentId, setStudentId] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState(ROLES.STUDENT);
   const [err, setErr] = useState("");
@@ -16,6 +17,10 @@ export default function RegisterScreen({ navigation }) {
 
   async function register() {
     setErr("");
+    if (!name.trim() || !email.trim() || !studentId.trim() || !password) {
+      setErr("Name, Email, Student ID, and password are required");
+      return;
+    }
     setLoading(true);
     if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
     setErr("Please enter canteen name and location");
@@ -24,6 +29,7 @@ export default function RegisterScreen({ navigation }) {
   }
     try {
       await api.register({ name, email, password, role, 
+        studentId,
         canteenName: role === ROLES.CANTEEN_OWNER ? canteenName : null,
       canteenLocation: role === ROLES.CANTEEN_OWNER ? canteenLocation : null,
       });
@@ -69,6 +75,14 @@ export default function RegisterScreen({ navigation }) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          style={styles.input}
+        />
+        <TextInput
+          placeholder="Student ID Number"
+          placeholderTextColor={theme.colors.textMuted}
+          autoCapitalize="none"
+          value={studentId}
+          onChangeText={setStudentId}
           style={styles.input}
         />
         {role === ROLES.CANTEEN_OWNER && (
