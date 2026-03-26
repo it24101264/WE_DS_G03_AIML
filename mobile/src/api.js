@@ -85,6 +85,7 @@ export const api = {
     const search = new URLSearchParams();
     if (params.q) search.set("q", params.q);
     if (params.status) search.set("status", params.status);
+    if (params.sort) search.set("sort", params.sort);
     const qs = search.toString();
     return apiRequest(`/marketplace${qs ? `?${qs}` : ""}`);
   },
@@ -96,4 +97,13 @@ export const api = {
   updateMarketplacePostStatus: (id, payload) =>
     apiRequest(`/marketplace/${encodeURIComponent(id)}/status`, { method: "PATCH", body: payload }),
   deleteMarketplacePost: (id) => apiRequest(`/marketplace/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  createMarketplaceRequest: (postId, payload) =>
+    apiRequest(`/marketplace/${encodeURIComponent(postId)}/requests`, { method: "POST", body: payload }),
+  myMarketplaceRequests: () => apiRequest("/marketplace/requests/mine"),
+  updateMarketplaceRequest: (requestId, payload) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}`, { method: "PATCH", body: payload }),
+  decideMarketplaceRequest: (requestId, payload) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}/decision`, { method: "PATCH", body: payload }),
+  deleteMarketplaceRequest: (requestId) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}`, { method: "DELETE" }),
 };

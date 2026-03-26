@@ -52,7 +52,10 @@ export function PhotoStrip({ photos, compact = false }) {
   return (
     <View style={[styles.photoRow, compact && styles.photoRowCompact]}>
       {items.map((photo, index) => {
-        const uri = typeof photo === "string" ? photo : photo?.uri || photo?.base64DataUrl;
+        const uri =
+          typeof photo === "string"
+            ? photo
+            : photo?.base64DataUrl || photo?.uri;
         if (!uri) return null;
         return <Image key={`${uri}-${index}`} source={{ uri }} style={[styles.photo, compact && styles.photoCompact]} contentFit="cover" />;
       })}
@@ -62,7 +65,7 @@ export function PhotoStrip({ photos, compact = false }) {
 
 export function SellerPostCard({ item, onPress, onEdit, onMarkSold, onDelete, actionLoading }) {
   const isSold = String(item?.status || "").toUpperCase() === MARKETPLACE_STATUS.SOLD;
-  const messageCount = Array.isArray(item?.messages) ? item.messages.length : Number(item?.messageCount || 0);
+  const requestCount = Number(item?.requestCount || (Array.isArray(item?.requests) ? item.requests.length : 0));
 
   return (
     <Pressable style={styles.card} onPress={onPress}>
@@ -82,7 +85,7 @@ export function SellerPostCard({ item, onPress, onEdit, onMarkSold, onDelete, ac
       <View style={styles.inlineStats}>
         <View style={styles.inlineStat}>
           <MaterialCommunityIcons name="message-text-outline" size={18} color={theme.colors.primaryDeep} />
-          <Text style={styles.inlineStatText}>{messageCount} message(s)</Text>
+          <Text style={styles.inlineStatText}>{requestCount} request(s)</Text>
         </View>
         <View style={styles.inlineStat}>
           <MaterialCommunityIcons name="clock-time-four-outline" size={18} color={theme.colors.textMuted} />

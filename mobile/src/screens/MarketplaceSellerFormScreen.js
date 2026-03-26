@@ -7,6 +7,15 @@ import { api } from "../api";
 import { theme } from "../ui/theme";
 
 const MAX_PHOTOS = 2;
+const TITLE_MIN = 3;
+const TITLE_MAX = 80;
+const DESCRIPTION_MIN = 10;
+const DESCRIPTION_MAX = 1000;
+const SELLER_NAME_MIN = 2;
+const SELLER_NAME_MAX = 60;
+const PHONE_MIN_DIGITS = 9;
+const PHONE_MAX_DIGITS = 15;
+const MAX_PRICE = 100000000;
 
 function normalizePhotos(photos) {
   return Array.isArray(photos)
@@ -20,6 +29,12 @@ function normalizePhotos(photos) {
           return photo;
         })
     : [];
+}
+
+function isValidPhoneNumber(value) {
+  const text = String(value || "").trim();
+  const digits = text.replace(/\D/g, "");
+  return /^[0-9+()\-\s]+$/.test(text) && digits.length >= PHONE_MIN_DIGITS && digits.length <= PHONE_MAX_DIGITS;
 }
 
 export default function MarketplaceSellerFormScreen({ navigation, route, user }) {
@@ -108,18 +123,35 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
     const cleanContactNumber = contactNumber.trim();
     const cleanSellerName = sellerName.trim();
     const numericPrice = Number(price);
+    const shareablePhotos = photos.filter((photo) => photo?.base64DataUrl || (photo?.uri && !String(photo.uri).startsWith("file:")));
 
     if (!cleanTitle || !cleanDescription || !cleanContactNumber || !cleanSellerName || !price.trim()) {
       setError("Fill in item name, price, description, mobile number, and seller name");
       return;
     }
-
-    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-      setError("Enter a valid price");
+    if (cleanTitle.length < TITLE_MIN || cleanTitle.length > TITLE_MAX) {
+      setError(`Item name must be ${TITLE_MIN}-${TITLE_MAX} characters`);
+      return;
+    }
+    if (cleanDescription.length < DESCRIPTION_MIN || cleanDescription.length > DESCRIPTION_MAX) {
+      setError(`Description must be ${DESCRIPTION_MIN}-${DESCRIPTION_MAX} characters`);
+      return;
+    }
+    if (cleanSellerName.length < SELLER_NAME_MIN || cleanSellerName.length > SELLER_NAME_MAX) {
+      setError(`Seller name must be ${SELLER_NAME_MIN}-${SELLER_NAME_MAX} characters`);
+      return;
+    }
+    if (!isValidPhoneNumber(cleanContactNumber)) {
+      setError("Enter a valid mobile number");
       return;
     }
 
-    if (!photos.length) {
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0 || numericPrice > MAX_PRICE) {
+      setError(`Enter a valid price up to ${MAX_PRICE}`);
+      return;
+    }
+
+    if (!shareablePhotos.length) {
       setError("Add at least one photo");
       return;
     }

@@ -78,7 +78,7 @@ export default function MarketplaceSellerDetailScreen({ navigation, route }) {
     );
   }
 
-  const messages = Array.isArray(post.messages) ? post.messages : [];
+  const requests = Array.isArray(post.requests) ? post.requests : [];
   const isSold = String(post.status || "").toUpperCase() === MARKETPLACE_STATUS.SOLD;
 
   return (
@@ -128,27 +128,28 @@ export default function MarketplaceSellerDetailScreen({ navigation, route }) {
 
       <View style={styles.card}>
         <View style={styles.messagesHeader}>
-          <Text style={styles.sectionTitle}>Buyer messages</Text>
+          <Text style={styles.sectionTitle}>Buyer requests</Text>
           <View style={styles.messageCountPill}>
             <MaterialCommunityIcons name="message-text-outline" size={16} color={theme.colors.infoText} />
-            <Text style={styles.messageCountText}>{messages.length}</Text>
+            <Text style={styles.messageCountText}>{requests.length}</Text>
           </View>
         </View>
 
-        {messages.length === 0 ? (
-          <Text style={styles.muted}>No messages received for this post yet.</Text>
+        {requests.length === 0 ? (
+          <Text style={styles.muted}>No buyer requests received for this post yet.</Text>
         ) : (
           <View style={styles.messageList}>
-            {messages.map((message, index) => (
-              <View key={message.id || `${message.senderName || "msg"}-${index}`} style={styles.messageCard}>
+            {requests.map((request, index) => (
+              <View key={request.id || `${request.buyerName || "request"}-${index}`} style={styles.messageCard}>
                 <View style={styles.messageTopRow}>
                   <View>
-                    <Text style={styles.messageName}>{message.senderName || message.userName || "Buyer"}</Text>
-                    <Text style={styles.messageMeta}>{message.senderContact || message.userEmail || message.phone || "No contact provided"}</Text>
+                    <Text style={styles.messageName}>{request.buyerName || "Buyer"}</Text>
+                    <Text style={styles.messageMeta}>{request.buyerContact || request.buyerEmail || "Contact hidden until accepted"}</Text>
                   </View>
-                  <Text style={styles.messageMeta}>{formatMarketplaceTime(message.createdAt)}</Text>
+                  <Text style={styles.messageMeta}>{formatMarketplaceTime(request.updatedAt || request.createdAt)}</Text>
                 </View>
-                <Text style={styles.body}>{message.text || message.message || "No message body"}</Text>
+                <Text style={styles.offerText}>Offer: {formatCurrency(request.negotiatedPrice)}</Text>
+                <Text style={styles.body}>{request.message || "No message body"}</Text>
               </View>
             ))}
           </View>
@@ -220,6 +221,10 @@ const styles = StyleSheet.create({
   body: {
     color: theme.colors.text,
     lineHeight: 22,
+  },
+  offerText: {
+    color: theme.colors.primaryDeep,
+    fontWeight: "900",
   },
   actionRow: {
     flexDirection: "row",
