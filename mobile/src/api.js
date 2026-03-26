@@ -81,4 +81,19 @@ export const api = {
   updateLostFoundItemStatus: (id, payload) =>
     apiRequest(`/lost-found/${encodeURIComponent(id)}/status`, { method: "PATCH", body: payload }),
   createLostFoundItem: (payload) => apiRequest("/lost-found", { method: "POST", body: payload }),
+  marketplacePosts: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.q) search.set("q", params.q);
+    if (params.status) search.set("status", params.status);
+    const qs = search.toString();
+    return apiRequest(`/marketplace${qs ? `?${qs}` : ""}`);
+  },
+  myMarketplacePosts: () => apiRequest("/marketplace/mine"),
+  marketplacePostById: (id) => apiRequest(`/marketplace/${encodeURIComponent(id)}`),
+  createMarketplacePost: (payload) => apiRequest("/marketplace", { method: "POST", body: payload }),
+  updateMarketplacePost: (id, payload) =>
+    apiRequest(`/marketplace/${encodeURIComponent(id)}`, { method: "PATCH", body: payload }),
+  updateMarketplacePostStatus: (id, payload) =>
+    apiRequest(`/marketplace/${encodeURIComponent(id)}/status`, { method: "PATCH", body: payload }),
+  deleteMarketplacePost: (id) => apiRequest(`/marketplace/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };

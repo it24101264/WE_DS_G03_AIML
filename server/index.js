@@ -30,6 +30,9 @@ app.use("/api/v1/parking", parkingRoutes);
 const lostFoundRoutes = require("./src/routes/lostFound.routes");
 app.use("/api/v1/lost-found", lostFoundRoutes);
 
+const marketplaceRoutes = require("./src/routes/marketplace.routes");
+app.use("/api/v1/marketplace", marketplaceRoutes);
+
 const canteenRoutes = require("./src/routes/canteen");
 app.use("/api/v1/canteen", canteenRoutes);
 

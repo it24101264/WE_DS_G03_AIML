@@ -72,9 +72,9 @@ function buildModules(role) {
     },
     {
       ...MODULE_CATALOG.marketplace,
-      route: null,
-      status: "Coming soon",
-      available: false,
+      route: "MarketplaceChoice",
+      status: "Available now",
+      available: true,
     },
   ];
 }
