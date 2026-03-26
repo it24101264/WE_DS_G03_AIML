@@ -66,8 +66,8 @@ export default function MarketplaceSellerHomeScreen({ navigation }) {
 
   const activeCount = posts.filter((post) => String(post.status || "").toUpperCase() !== MARKETPLACE_STATUS.SOLD).length;
   const soldCount = posts.length - activeCount;
-  const totalMessages = posts.reduce(
-    (sum, post) => sum + (Array.isArray(post.messages) ? post.messages.length : Number(post.messageCount || 0)),
+  const totalRequests = posts.reduce(
+    (sum, post) => sum + Number(post.requestCount || (Array.isArray(post.requests) ? post.requests.length : 0)),
     0
   );
 
@@ -76,7 +76,7 @@ export default function MarketplaceSellerHomeScreen({ navigation }) {
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>Seller</Text>
         <Text style={styles.title}>Your Listings</Text>
-        <Text style={styles.subtitle}>Create posts, check messages, and mark items as sold.</Text>
+        <Text style={styles.subtitle}>Create posts, review buyer requests, and mark items as sold.</Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
@@ -92,8 +92,8 @@ export default function MarketplaceSellerHomeScreen({ navigation }) {
             <Text style={styles.statLabel}>Sold</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{totalMessages}</Text>
-            <Text style={styles.statLabel}>Messages</Text>
+            <Text style={styles.statValue}>{totalRequests}</Text>
+            <Text style={styles.statLabel}>Requests</Text>
           </View>
         </View>
 
@@ -101,6 +101,9 @@ export default function MarketplaceSellerHomeScreen({ navigation }) {
           <Pressable style={styles.primaryBtn} onPress={() => navigation.navigate("MarketplaceSellerForm")}>
             <MaterialCommunityIcons name="plus-circle-outline" size={20} color="#ffffff" />
             <Text style={styles.primaryBtnText}>New Post</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("MarketplaceSellerRequests")}>
+            <Text style={styles.secondaryBtnText}>Requests</Text>
           </Pressable>
           <Pressable style={styles.secondaryBtn} onPress={loadPosts}>
             <Text style={styles.secondaryBtnText}>{loading ? "Refreshing..." : "Refresh"}</Text>
