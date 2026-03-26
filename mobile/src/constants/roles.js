@@ -2,6 +2,7 @@ export const ROLES = {
   STUDENT: "student",
   BATCH_REP: "batchRep",
   CANTEEN_OWNER: "canteenOwner",
+  ADMIN: "admin",
 };
 
 export const ROLE_OPTIONS = [
@@ -12,7 +13,8 @@ export const ROLE_OPTIONS = [
 
 export function normalizeRole(role) {
   const value = String(role || "").trim().toLowerCase();
-  if (value === "rep" || value === "batchrep" || value === "batch_rep" || value === "admin") return ROLES.BATCH_REP;
+  if (value === "admin") return ROLES.ADMIN;
+  if (value === "rep" || value === "batchrep" || value === "batch_rep") return ROLES.BATCH_REP;
   if (value === "canteenowner" || value === "canteen_owner" || value === "canteen owner" || value === "owner") {
     return ROLES.CANTEEN_OWNER;
   }

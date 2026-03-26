@@ -29,6 +29,12 @@ export const api = {
   register: (payload) => apiRequest("/auth/register", { method: "POST", body: payload }),
   login: (payload) => apiRequest("/auth/login", { method: "POST", body: payload }),
   me: () => apiRequest("/auth/me"),
+  studyAreaAdminBootstrap: () => apiRequest("/study-areas/admin/bootstrap"),
+  studyAreas: () => apiRequest("/study-areas"),
+  syncStudyAreaPresence: (payload) => apiRequest("/study-areas/presence", { method: "POST", body: payload }),
+  createStudyArea: (payload) => apiRequest("/study-areas", { method: "POST", body: payload }),
+  updateStudyArea: (id, payload) => apiRequest(`/study-areas/${encodeURIComponent(id)}`, { method: "PUT", body: payload }),
+  deleteStudyArea: (id) => apiRequest(`/study-areas/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   createRequest: (payload) => apiRequest("/kuppi/requests", { method: "POST", body: payload }),
   myRequests: () => apiRequest("/kuppi/requests/mine"),

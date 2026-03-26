@@ -26,6 +26,8 @@ import CanteenBottomTabs from "./src/screens/CanteenBottomTabs";
 import ParkingScreen from "./src/screens/ParkingScreen";
 import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
 import { normalizeRole, ROLES } from "./src/constants/roles";
+import StudyAreasScreen from "./src/screens/StudyAreasScreen";
+import StudyAreaAdminScreen from "./src/screens/StudyAreaAdminScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -72,7 +74,15 @@ export default function App() {
   return (
     <NavigationContainer theme={navTheme}>
       <Stack.Navigator
-        initialRouteName={!user ? "Login" : normalizedRole === ROLES.CANTEEN_OWNER ? "CanteenOwner" : "Home"}
+        initialRouteName={
+          !user
+            ? "Login"
+            : normalizedRole === ROLES.CANTEEN_OWNER
+              ? "CanteenOwner"
+              : normalizedRole === ROLES.ADMIN
+                ? "StudyAreaAdmin"
+                : "Home"
+        }
         screenOptions={{
           headerTitleAlign: "left",
           headerStyle: { backgroundColor: theme.colors.surface },
@@ -101,6 +111,15 @@ export default function App() {
           <>
             <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>
               {(props) => <CanteenBottomTabs {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+          </>
+        ) : normalizedRole === ROLES.ADMIN ? (
+          <>
+            <Stack.Screen name="StudyAreaAdmin" options={{ title: "Study Areas Admin" }}>
+              {(props) => <StudyAreaAdminScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+            <Stack.Screen name="StudyAreas" options={{ title: "Study Areas" }}>
+              {(props) => <StudyAreasScreen {...props} user={user} />}
             </Stack.Screen>
           </>
         ) : (
@@ -134,6 +153,10 @@ export default function App() {
 
             <Stack.Screen name="Parking" options={{ title: "Parking" }}>
               {(props) => <ParkingScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="StudyAreas" options={{ title: "Study Areas" }}>
+              {(props) => <StudyAreasScreen {...props} user={user} />}
             </Stack.Screen>
 
             <Stack.Screen name="LostFound" options={{ title: "Lost and Found" }}>
