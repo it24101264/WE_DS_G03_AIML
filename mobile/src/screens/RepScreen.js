@@ -3,6 +3,24 @@ import { View, Text, TextInput, Pressable, FlatList, Alert, ScrollView, StyleShe
 import { api } from "../api";
 import { theme } from "../ui/theme";
 
+const LOCATION_MAX_LENGTH = 120;
+
+function isFutureIsoDateTime(value) {
+  if (!value) return false;
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === String(value) && parsed.getTime() > Date.now();
+}
+
+function isValidMeetLink(value) {
+  if (!value) return false;
+  try {
+    const url = new URL(String(value));
+    return url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function StatusBadge({ value }) {
   const status = String(value || "").toUpperCase();
   const palette = {
@@ -26,6 +44,7 @@ export default function RepScreen({ user, onLogout }) {
   const [draftSessions, setDraftSessions] = useState([]);
   const [slotBySession, setSlotBySession] = useState({});
   const [locationBySession, setLocationBySession] = useState({});
+  const [meetLinkBySession, setMeetLinkBySession] = useState({});
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -71,12 +90,36 @@ export default function RepScreen({ user, onLogout }) {
 
   async function decide(id, decision) {
     setErr("");
+    const scheduledAt = String(slotBySession[id] || "").trim();
+    const location = String(locationBySession[id] || "").trim();
+    const meetLink = String(meetLinkBySession[id] || "").trim();
+
+    if (decision === "accept") {
+      if (!isFutureIsoDateTime(scheduledAt)) {
+        setErr("Enter a future ISO datetime like 2026-03-25T10:30:00.000Z before publishing");
+        return;
+      }
+      if (!location && !meetLink) {
+        setErr("Provide either a physical location or a meet link before publishing");
+        return;
+      }
+      if (location && location.length > LOCATION_MAX_LENGTH) {
+        setErr(`Location must be ${LOCATION_MAX_LENGTH} characters or less`);
+        return;
+      }
+      if (meetLink && !isValidMeetLink(meetLink)) {
+        setErr("Meet link must be a valid https URL");
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       await api.decideSession(id, {
         decision,
-        scheduledAt: slotBySession[id] || null,
-        location: locationBySession[id] || null,
+        scheduledAt: scheduledAt || null,
+        location: location || null,
+        meetLink: meetLink || null,
       });
       await loadDraftSessions();
       Alert.alert("Updated", `Session ${decision}ed successfully.`);
@@ -170,18 +213,27 @@ export default function RepScreen({ user, onLogout }) {
               <Text style={styles.muted}>Requests: {item.requestCount || (item.requestIds || []).length}</Text>
 
               <TextInput
-                placeholder="Time slot (e.g. Tue 4PM)"
+                placeholder="ISO time (e.g. 2026-03-25T10:30:00.000Z)"
                 placeholderTextColor={theme.colors.textMuted}
                 value={slotBySession[item.id] || ""}
                 onChangeText={(value) => setSlotBySession((prev) => ({ ...prev, [item.id]: value }))}
                 style={styles.input}
               />
               <TextInput
-                placeholder="Location / mode"
+                placeholder="Physical location"
                 placeholderTextColor={theme.colors.textMuted}
                 value={locationBySession[item.id] || ""}
                 onChangeText={(value) => setLocationBySession((prev) => ({ ...prev, [item.id]: value }))}
                 style={styles.input}
+              />
+              <TextInput
+                placeholder="Meet link (optional)"
+                placeholderTextColor={theme.colors.textMuted}
+                value={meetLinkBySession[item.id] || ""}
+                onChangeText={(value) => setMeetLinkBySession((prev) => ({ ...prev, [item.id]: value }))}
+                style={styles.input}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
 
               <View style={styles.row}>

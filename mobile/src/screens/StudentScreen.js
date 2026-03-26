@@ -3,6 +3,20 @@ import { View, Text, TextInput, Pressable, FlatList, ScrollView, StyleSheet } fr
 import { api } from "../api";
 import { theme } from "../ui/theme";
 
+const TOPIC_MIN_LENGTH = 3;
+const TOPIC_MAX_LENGTH = 100;
+const DESCRIPTION_MAX_LENGTH = 500;
+
+function isValidSlotPart(month, date, time, period) {
+  const normalizedPeriod = String(period || "").trim().toUpperCase();
+  return (
+    /^[A-Za-z]{3,12}$/.test(String(month || "").trim()) &&
+    /^(0?[1-9]|[12]\d|3[01])$/.test(String(date || "").trim()) &&
+    /^(0?[1-9]|1[0-2])(?::[0-5]\d)?$/.test(String(time || "").trim()) &&
+    ["AM", "PM"].includes(normalizedPeriod)
+  );
+}
+
 function StatusBadge({ value }) {
   const status = String(value || "").toUpperCase();
   const palette = {
@@ -50,10 +64,30 @@ export default function StudentScreen({ user, onLogout }) {
   }, []);
 
   async function submit() {
+    const safeTopic = topic.trim();
+    const safeDescription = description.trim();
+
+    if (!safeTopic) {
+      setErr("Topic is required");
+      return;
+    }
+    if (safeTopic.length < TOPIC_MIN_LENGTH || safeTopic.length > TOPIC_MAX_LENGTH) {
+      setErr(`Topic must be between ${TOPIC_MIN_LENGTH} and ${TOPIC_MAX_LENGTH} characters`);
+      return;
+    }
+    if (safeDescription.length > DESCRIPTION_MAX_LENGTH) {
+      setErr(`Description must be ${DESCRIPTION_MAX_LENGTH} characters or less`);
+      return;
+    }
+    if (availabilitySlots.length === 0) {
+      setErr("Add at least one availability slot");
+      return;
+    }
+
     setErr("");
     setLoading(true);
     try {
-      await api.createRequest({ topic, description, availabilitySlots });
+      await api.createRequest({ topic: safeTopic, description: safeDescription, availabilitySlots });
       setTopic("");
       setSlotMonth("");
       setSlotDate("");
@@ -75,6 +109,10 @@ export default function StudentScreen({ user, onLogout }) {
 
     if (!month || !date || !time || !period) {
       setErr("Enter month, date, time, and AM/PM to add a slot");
+      return;
+    }
+    if (!isValidSlotPart(month, date, time, period)) {
+      setErr("Use a valid slot like Apr / 12 / 4:30 / PM");
       return;
     }
 
