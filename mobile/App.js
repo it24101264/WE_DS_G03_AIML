@@ -12,9 +12,13 @@ import LostFoundCreateScreen from "./src/screens/LostFoundCreateScreen";
 import LostFoundDetailScreen from "./src/screens/LostFoundDetailScreen";
 import LostFoundMyPostsScreen from "./src/screens/LostFoundMyPostsScreen";
 import LostFoundScreen from "./src/screens/LostFoundScreen";
+import MarketplaceBuyerScreen from "./src/screens/MarketplaceBuyerScreen";
+import MarketplaceChoiceScreen from "./src/screens/MarketplaceChoiceScreen";
+import MarketplaceSellerDetailScreen from "./src/screens/MarketplaceSellerDetailScreen";
+import MarketplaceSellerFormScreen from "./src/screens/MarketplaceSellerFormScreen";
+import MarketplaceSellerHomeScreen from "./src/screens/MarketplaceSellerHomeScreen";
 import StudentScreen from "./src/screens/StudentScreen";
 import RepScreen from "./src/screens/RepScreen";
-import CanteenOwnerScreen from "./src/screens/CanteenOwnerScreen";
 import CanteenBottomTabs from "./src/screens/CanteenBottomTabs";
 import ParkingScreen from "./src/screens/ParkingScreen";
 import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
@@ -143,6 +147,26 @@ export default function App() {
 
             <Stack.Screen name="LostFoundDetail" options={{ title: "Post Details" }}>
               {(props) => <LostFoundDetailScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceChoice" options={{ title: "Marketplace" }}>
+              {(props) => <MarketplaceChoiceScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceSellerHome" options={{ title: "Seller Side" }}>
+              {(props) => <MarketplaceSellerHomeScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceSellerForm" options={{ title: "Seller Post" }}>
+              {(props) => <MarketplaceSellerFormScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceSellerDetail" options={{ title: "Seller Post Details" }}>
+              {(props) => <MarketplaceSellerDetailScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceBuyerHome" options={{ title: "Buyer Side" }}>
+              {(props) => <MarketplaceBuyerScreen {...props} user={user} />}
             </Stack.Screen>
           </>
         )}

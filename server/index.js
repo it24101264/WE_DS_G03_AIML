@@ -7,8 +7,8 @@ const app = express();
 
 // Middlewares
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 app.use((req, _res, next) => {
   console.log("REQ:", req.method, req.url);
@@ -29,6 +29,9 @@ app.use("/api/v1/parking", parkingRoutes);
 
 const lostFoundRoutes = require("./src/routes/lostFound.routes");
 app.use("/api/v1/lost-found", lostFoundRoutes);
+
+const marketplaceRoutes = require("./src/routes/marketplace.routes");
+app.use("/api/v1/marketplace", marketplaceRoutes);
 
 const canteenRoutes = require("./src/routes/canteen");
 app.use("/api/v1/canteen", canteenRoutes);
