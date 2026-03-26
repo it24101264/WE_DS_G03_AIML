@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 require("dotenv").config();
+const { seedStudyAreaAdmin } = require("./src/utils/seedStudyAreaAdmin");
 
 const app = express();
 
@@ -42,6 +43,9 @@ app.use("/api/v1/admin", adminRoutes);
 const studentRoutes = require("./src/routes/canteenStudent");
 app.use("/api/v1/student", studentRoutes);
 
+const studyAreaRoutes = require("./src/routes/studyArea.routes");
+app.use("/api/v1/study-areas", studyAreaRoutes);
+
 const { notFound, errorHandler } = require("./src/middlewares/errorHandler");
 
 // Root route
@@ -66,6 +70,7 @@ async function startServer() {
 
     await mongoose.connect(MONGO_URI);
     console.log("MongoDB connected");
+    await seedStudyAreaAdmin();
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

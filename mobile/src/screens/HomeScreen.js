@@ -30,6 +30,11 @@ const MODULE_CATALOG = {
     title: "Marketplace",
     icon: "storefront-outline",
   },
+  studyAreas: {
+    key: "studyAreas",
+    title: "Study Areas",
+    icon: "map-marker-radius-outline",
+  },
 };
 
 function buildModules(role) {
@@ -68,6 +73,12 @@ function buildModules(role) {
       ...MODULE_CATALOG.lostFound,
       route: "LostFound",
       status: "Available now",
+      available: true,
+    },
+    {
+      ...MODULE_CATALOG.studyAreas,
+      route: "StudyAreas",
+      status: "Live occupancy",
       available: true,
     },
     {
@@ -127,6 +138,7 @@ export default function HomeScreen({ navigation, user, normalizedRole, onLogout 
                 module.key === "parking" && styles.iconWrapTeal,
                 module.key === "food" && styles.iconWrapGold,
                 module.key === "lostFound" && styles.iconWrapRose,
+                module.key === "studyAreas" && styles.iconWrapMint,
                 module.key === "marketplace" && styles.iconWrapViolet,
               ]}
             >
@@ -262,6 +274,9 @@ const styles = StyleSheet.create({
   },
   iconWrapRose: {
     backgroundColor: "#c9567a",
+  },
+  iconWrapMint: {
+    backgroundColor: "#0f8a73",
   },
   iconWrapViolet: {
     backgroundColor: "#7560f5",

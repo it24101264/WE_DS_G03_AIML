@@ -19,16 +19,21 @@ exports.register = async (req, res) => {
     const safeName = String(name || "").trim();
     const safeEmail = String(email || "").trim().toLowerCase();
     const safePassword = String(password || "");
+    const normalizedRole = normalizeRole(role, ROLES.STUDENT);
 
     if (!safeName || !safeEmail || !safePassword) {
       return res.status(400).json({ success: false, message: "Missing fields" });
+    }
+
+    if (normalizedRole === ROLES.ADMIN) {
+      return res.status(403).json({ success: false, message: "Admin accounts cannot be self-registered" });
     }
 
     const exists = await User.findOne({ email: safeEmail }).lean();
     if (exists) {
       return res.status(409).json({ success: false, message: "Email already exists" });
     }
-    if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
+    if (normalizedRole === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
   return res.status(400).json({
     success: false,
     message: "Canteen name and location required"
@@ -42,9 +47,9 @@ exports.register = async (req, res) => {
       name: safeName,
       email: safeEmail,
       passwordHash,
-      role: normalizeRole(role, ROLES.STUDENT),
+      role: normalizedRole,
     });
-    if (role === ROLES.CANTEEN_OWNER) {
+    if (normalizedRole === ROLES.CANTEEN_OWNER) {
   const newCanteen = new CanteenProfile({
     UserID: user._id,
     Name: canteenName,
