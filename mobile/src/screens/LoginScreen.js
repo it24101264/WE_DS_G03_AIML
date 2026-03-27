@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Pla
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api } from "../api";
 import { theme } from "../ui/theme";
+import { validateLoginForm } from "../utils/authValidation";
 
 export default function LoginScreen({ navigation, onLoggedIn }) {
   const [email, setEmail] = useState("");
@@ -12,9 +13,15 @@ export default function LoginScreen({ navigation, onLoggedIn }) {
 
   async function login() {
     setErr("");
+    const { isValid, message, values } = validateLoginForm({ email, password });
+    if (!isValid) {
+      setErr(message);
+      return;
+    }
+
     setLoading(true);
     try {
-      const res = await api.login({ email, password });
+      const res = await api.login(values);
       await AsyncStorage.setItem("token", res.token);
       await onLoggedIn();
     } catch (e) {
@@ -43,6 +50,7 @@ export default function LoginScreen({ navigation, onLoggedIn }) {
           placeholderTextColor={theme.colors.textMuted}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
           value={email}
           onChangeText={setEmail}
           style={styles.input}
@@ -53,6 +61,8 @@ export default function LoginScreen({ navigation, onLoggedIn }) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           style={styles.input}
         />
 

@@ -3,7 +3,8 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const CanteenProfile = require("../models/CanteenProfile");
 const { makeId } = require("../utils/id");
-const { normalizeRole, ROLES } = require("../constants/roles");
+const { ROLES } = require("../constants/roles");
+const { validateRegisterPayload, validateLoginPayload } = require("../utils/authValidation");
 
 function signToken(user) {
   return jwt.sign(
@@ -15,49 +16,35 @@ function signToken(user) {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role = ROLES.STUDENT, canteenName, canteenLocation } = req.body || {};
-    const safeName = String(name || "").trim();
-    const safeEmail = String(email || "").trim().toLowerCase();
-    const safePassword = String(password || "");
-    const normalizedRole = normalizeRole(role, ROLES.STUDENT);
-
-    if (!safeName || !safeEmail || !safePassword) {
-      return res.status(400).json({ success: false, message: "Missing fields" });
+    const { isValid, message, values } = validateRegisterPayload(req.body);
+    if (!isValid) {
+      const status = message === "Admin accounts cannot be self-registered" ? 403 : 400;
+      return res.status(status).json({ success: false, message });
     }
 
-    if (normalizedRole === ROLES.ADMIN) {
-      return res.status(403).json({ success: false, message: "Admin accounts cannot be self-registered" });
-    }
-
-    const exists = await User.findOne({ email: safeEmail }).lean();
+    const exists = await User.findOne({ email: values.email }).lean();
     if (exists) {
       return res.status(409).json({ success: false, message: "Email already exists" });
     }
-    if (normalizedRole === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
-  return res.status(400).json({
-    success: false,
-    message: "Canteen name and location required"
-  });
-}
 
-    const passwordHash = await bcrypt.hash(safePassword, 10);
+    const passwordHash = await bcrypt.hash(values.password, 10);
 
     const user = await User.create({
       id: makeId("u_"),
-      name: safeName,
-      email: safeEmail,
+      name: values.name,
+      email: values.email,
       passwordHash,
-      role: normalizedRole,
+      role: values.role,
     });
-    if (normalizedRole === ROLES.CANTEEN_OWNER) {
-  const newCanteen = new CanteenProfile({
-    UserID: user._id,
-    Name: canteenName,
-    Location: canteenLocation
-  });
+    if (values.role === ROLES.CANTEEN_OWNER) {
+      const newCanteen = new CanteenProfile({
+        UserID: user._id,
+        Name: values.canteenName,
+        Location: values.canteenLocation,
+      });
 
-  await newCanteen.save();
-}
+      await newCanteen.save();
+    }
 
     const token = signToken(user);
 
@@ -74,20 +61,17 @@ exports.register = async (req, res) => {
 // POST /api/v1/auth/login
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body || {};
-    const safeEmail = String(email || "").trim().toLowerCase();
-    const safePassword = String(password || "");
-
-    if (!safeEmail || !safePassword) {
-      return res.status(400).json({ success: false, message: "email and password required" });
+    const { isValid, message, values } = validateLoginPayload(req.body);
+    if (!isValid) {
+      return res.status(400).json({ success: false, message });
     }
 
-    const user = await User.findOne({ email: safeEmail }).lean();
+    const user = await User.findOne({ email: values.email }).lean();
     if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    const ok = await bcrypt.compare(safePassword, user.passwordHash);
+    const ok = await bcrypt.compare(values.password, user.passwordHash);
     if (!ok) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
