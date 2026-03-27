@@ -20,6 +20,7 @@ const studyAreaSchema = new mongoose.Schema(
       longitude: { type: Number, required: true },
     },
     radiusMeters: { type: Number, required: true, min: 5, max: 2000 },
+    studentCapacity: { type: Number, min: 1, default: null },
     occupants: { type: [occupantSchema], default: [] },
     lastOccupancySyncAt: { type: Date, default: Date.now },
   },

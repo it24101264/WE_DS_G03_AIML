@@ -73,6 +73,7 @@ function normalizeAreaDocument(area) {
   const latitude = extractNumber(area.center?.latitude, area.latitude);
   const longitude = extractNumber(area.center?.longitude, area.longitude);
   const radiusMeters = extractNumber(area.radiusMeters, area.radius, area.radiusInMeters);
+  const studentCapacity = extractNumber(area.studentCapacity);
 
   if (!area.id) {
     area.id = makeId("sa_");
@@ -96,6 +97,11 @@ function normalizeAreaDocument(area) {
 
   if (radiusMeters !== area.radiusMeters) {
     area.radiusMeters = radiusMeters;
+    changed = true;
+  }
+
+  if (studentCapacity !== area.studentCapacity) {
+    area.studentCapacity = studentCapacity;
     changed = true;
   }
 
@@ -124,7 +130,10 @@ function areaIsUsable(area) {
 function serializeArea(area, currentUserId) {
   const occupants = area.occupants || [];
   const studentCount = occupants.length;
-  const capacityEstimate = estimateCapacity(area.radiusMeters);
+  const studentCapacity = extractNumber(area.studentCapacity);
+  const capacityEstimate = Number.isFinite(studentCapacity) && studentCapacity > 0
+    ? studentCapacity
+    : estimateCapacity(area.radiusMeters);
   const density = classifyDensity(studentCount, capacityEstimate);
 
   return {
@@ -136,6 +145,7 @@ function serializeArea(area, currentUserId) {
       longitude: Number.isFinite(area.center?.longitude) ? area.center.longitude : null,
     },
     radiusMeters: Number.isFinite(area.radiusMeters) ? area.radiusMeters : null,
+    studentCapacity: Number.isFinite(studentCapacity) ? studentCapacity : null,
     studentCount,
     capacityEstimate,
     density,
@@ -156,6 +166,7 @@ function normalizeAreaPayload(body = {}) {
       longitude: Number(body.longitude),
     },
     radiusMeters: Number(body.radiusMeters),
+    studentCapacity: Number(body.studentCapacity),
   };
 
   if (!payload.name) {
@@ -168,6 +179,10 @@ function normalizeAreaPayload(body = {}) {
 
   if (!Number.isFinite(payload.radiusMeters) || payload.radiusMeters < 5) {
     return { error: "Radius must be at least 5 meters" };
+  }
+
+  if (!Number.isFinite(payload.studentCapacity) || payload.studentCapacity < 1) {
+    return { error: "Student capacity must be at least 1" };
   }
 
   return { payload };
@@ -245,6 +260,7 @@ exports.updateStudyArea = async (req, res) => {
     area.note = payload.note;
     area.center = payload.center;
     area.radiusMeters = payload.radiusMeters;
+    area.studentCapacity = payload.studentCapacity;
     await area.save();
 
     return res.status(200).json({ success: true, data: serializeArea(area, req.user?.id) });
