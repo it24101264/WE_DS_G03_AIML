@@ -1,6 +1,7 @@
 const KuppiRequest = require("../models/KuppiRequest");
 const KuppiSession = require("../models/KuppiSession");
 const { makeId } = require("../utils/id");
+const { KUPPI_TOPICS, normalizeKuppiTopic } = require("../constants/kuppiTopics");
 
 const REQUEST_STATUS = ["PENDING", "GROUPED", "SCHEDULED"];
 const SESSION_STATUS = ["DRAFT", "PUBLISHED", "REJECTED"];
@@ -80,6 +81,9 @@ function validateTopic(topic) {
 }
 
 function validateDescription(description) {
+  if (!description) {
+    return "description is required";
+  }
   if (description.length > DESCRIPTION_MAX_LENGTH) {
     return `description must be ${DESCRIPTION_MAX_LENGTH} characters or less`;
   }
@@ -133,12 +137,18 @@ exports.createRequest = async (req, res, next) => {
   try {
     const { topic, description = "", availabilitySlots } = req.body || {};
     const userId = String(req.user?.id || req.user?.userId || "");
-    const safeTopic = normalizeTopic(topic);
+    const safeTopic = normalizeKuppiTopic(topic);
     const safeDescription = normalizeDescription(description);
     const normalizedSlots = normalizeSlots(availabilitySlots);
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    if (!safeTopic) {
+      return res.status(400).json({
+        success: false,
+        message: `topic must be one of: ${KUPPI_TOPICS.join(", ")}`,
+      });
     }
     const topicError = validateTopic(safeTopic);
     if (topicError) {
