@@ -2,6 +2,9 @@ const ParkingSlot = require("../models/ParkingSlot");
 const ParkingSession = require("../models/ParkingSession");
 const ParkingVehicleProfile = require("../models/ParkingVehicleProfile");
 
+const PARKING_AUTO_RELEASE_HOURS = 24;
+const PARKING_AUTO_RELEASE_MS = PARKING_AUTO_RELEASE_HOURS * 60 * 60 * 1000;
+
 function normalizeVehiclePayload(body = {}) {
   const rawVehicleNumber = String(body.vehicleNumber || "").trim().toUpperCase();
   const compactVehicleNumber = rawVehicleNumber.replace(/[\s-]+/g, "");
@@ -36,6 +39,33 @@ function validateVehiclePayload(payload) {
   }
 
   return null;
+}
+
+async function releaseExpiredParkingSessions() {
+  const expiryCutoff = new Date(Date.now() - PARKING_AUTO_RELEASE_MS);
+  const expiredSessions = await ParkingSession.find({
+    exitTime: null,
+    entryTime: { $lte: expiryCutoff },
+  })
+    .select({ _id: 1, slotId: 1 })
+    .lean();
+
+  if (expiredSessions.length === 0) {
+    return;
+  }
+
+  const sessionIds = expiredSessions.map((session) => session._id);
+  const slotIds = [...new Set(expiredSessions.map((session) => session.slotId).filter(Boolean))];
+  const releasedAt = new Date();
+
+  await ParkingSession.updateMany(
+    { _id: { $in: sessionIds }, exitTime: null },
+    { $set: { exitTime: releasedAt } }
+  );
+
+  if (slotIds.length > 0) {
+    await ParkingSlot.updateMany({ slotId: { $in: slotIds } }, { $set: { status: "available" } });
+  }
 }
 
 exports.getVehicleProfiles = async (req, res) => {
@@ -103,6 +133,8 @@ exports.updateVehicleProfile = async (req, res) => {
 
 exports.deleteVehicleProfile = async (req, res) => {
   try {
+    await releaseExpiredParkingSessions();
+
     const activeSession = await ParkingSession.findOne({
       userId: req.user.id,
       vehicleProfileId: req.params.id,
@@ -133,6 +165,8 @@ exports.deleteVehicleProfile = async (req, res) => {
 
 exports.getSlots = async (_req, res) => {
   try {
+    await releaseExpiredParkingSessions();
+
     const slots = await ParkingSlot.find().sort({ slotId: 1 }).lean();
     return res.status(200).json({ success: true, data: slots });
   } catch (err) {
@@ -142,6 +176,8 @@ exports.getSlots = async (_req, res) => {
 
 exports.parkVehicle = async (req, res) => {
   try {
+    await releaseExpiredParkingSessions();
+
     const { slotId, vehicleProfileId } = req.body || {};
     const safeUsername = String(req.user.email || req.user.id || "").trim();
     const safeSlotId = String(slotId || "").trim();
@@ -206,6 +242,8 @@ exports.parkVehicle = async (req, res) => {
 
 exports.leaveSlot = async (req, res) => {
   try {
+    await releaseExpiredParkingSessions();
+
     const { slotId } = req.body || {};
     const safeSlotId = String(slotId || "").trim();
 
@@ -239,6 +277,8 @@ exports.leaveSlot = async (req, res) => {
 
 exports.getMySlot = async (req, res) => {
   try {
+    await releaseExpiredParkingSessions();
+
     const username = String(req.user.email || req.user.id || "").trim();
     const activeSession = await ParkingSession.findOne({
       $or: [{ userId: req.user.id }, { username }],
