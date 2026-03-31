@@ -431,7 +431,7 @@ export default function ParkingScreen({ user }) {
           <Text style={styles.sectionEyebrow}>Map</Text>
           <Text style={styles.sectionTitle}>Lot layout</Text>
         </View>
-        <Text style={styles.mapHint}>Tap a slot to park. Tap your slot to leave.</Text>
+        <Text style={styles.mapHint}>Tap a slot to park. Tap your slot to leave. Slots auto-release after 24 hours.</Text>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator>
