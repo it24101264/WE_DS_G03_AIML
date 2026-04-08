@@ -122,3 +122,35 @@ exports.me = async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 };
+
+// PATCH /api/v1/auth/push-token
+exports.updatePushToken = async (req, res) => {
+  try {
+    const userId = String(req.user?.id || "").trim();
+    const token = String(req.body?.expoPushToken || "").trim();
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+    if (token && !/^ExponentPushToken\[.+\]$/.test(token)) {
+      return res.status(400).json({ success: false, message: "Invalid Expo push token format" });
+    }
+
+    const user = await User.findOne({ id: userId });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    user.expoPushToken = token;
+    user.expoPushTokenUpdatedAt = token ? new Date() : null;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      data: { id: user.id, expoPushToken: user.expoPushToken, expoPushTokenUpdatedAt: user.expoPushTokenUpdatedAt },
+      message: token ? "Push token updated" : "Push token cleared",
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};

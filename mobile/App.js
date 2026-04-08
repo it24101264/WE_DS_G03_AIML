@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { api } from "./src/api";
 import { theme } from "./src/ui/theme";
 
@@ -15,6 +17,7 @@ import LostFoundScreen from "./src/screens/LostFoundScreen";
 import MarketplaceBuyerScreen from "./src/screens/MarketplaceBuyerScreen";
 import MarketplaceBuyerDetailScreen from "./src/screens/MarketplaceBuyerDetailScreen";
 import MarketplaceBuyerRequestsScreen from "./src/screens/MarketplaceBuyerRequestsScreen";
+import MarketplaceBuyerCartScreen from "./src/screens/MarketplaceBuyerCartScreen";
 import MarketplaceChoiceScreen from "./src/screens/MarketplaceChoiceScreen";
 import MarketplaceSellerDetailScreen from "./src/screens/MarketplaceSellerDetailScreen";
 import MarketplaceSellerFormScreen from "./src/screens/MarketplaceSellerFormScreen";
@@ -28,8 +31,12 @@ import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
 import { normalizeRole, ROLES } from "./src/constants/roles";
 import StudyAreasScreen from "./src/screens/StudyAreasScreen";
 import StudyAreaAdminScreen from "./src/screens/StudyAreaAdminScreen";
+// ── Payment screens ───────────────────────────────────────────────────────────
+import PaymentScreen from "./src/screens/PaymentScreen";
+import PaymentSuccessScreen from "./src/screens/PaymentSuccessScreen";
 
 const Stack = createNativeStackNavigator();
+
 
 const navTheme = {
   ...DefaultTheme,
@@ -63,6 +70,7 @@ export default function App() {
   useEffect(() => {
     loadMe();
   }, []);
+
 
   async function logout() {
     await AsyncStorage.removeItem("token");
@@ -209,6 +217,18 @@ export default function App() {
 
             <Stack.Screen name="MarketplaceBuyerRequests" options={{ title: "My Requests" }}>
               {(props) => <MarketplaceBuyerRequestsScreen {...props} user={user} />}
+            </Stack.Screen>
+            <Stack.Screen name="MarketplaceBuyerCart" options={{ title: "My Cart" }}>
+              {(props) => <MarketplaceBuyerCartScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            {/* ── Payment screens ─────────────────────────────────────────── */}
+            <Stack.Screen name="Payment" options={{ title: "Payment" }}>
+              {(props) => <PaymentScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="PaymentSuccess" options={{ headerShown: false }}>
+              {(props) => <PaymentSuccessScreen {...props} user={user} />}
             </Stack.Screen>
           </>
         )}

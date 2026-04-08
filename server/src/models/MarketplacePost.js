@@ -36,6 +36,7 @@ const marketplacePostSchema = new mongoose.Schema(
     titleKey: { type: String, required: true, trim: true, index: true },
     description: { type: String, default: "", trim: true },
     price: { type: Number, required: true, min: 0 },
+    availableQuantity: { type: Number, required: true, min: 0, default: 1 },
     status: { type: String, enum: STATUS_VALUES, default: "ACTIVE", index: true },
     photos: { type: [photoSchema], default: [] },
     messages: { type: [messageSchema], default: [] },
