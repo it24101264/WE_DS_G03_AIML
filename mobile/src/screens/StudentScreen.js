@@ -1,20 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, ScrollView, StyleSheet } from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { api } from "../api";
 import { theme } from "../ui/theme";
+import { KUPPI_TOPICS } from "../constants/kuppiTopics";
 
-const TOPIC_MIN_LENGTH = 3;
-const TOPIC_MAX_LENGTH = 100;
 const DESCRIPTION_MAX_LENGTH = 500;
 
-function isValidSlotPart(month, date, time, period) {
-  const normalizedPeriod = String(period || "").trim().toUpperCase();
-  return (
-    /^[A-Za-z]{3,12}$/.test(String(month || "").trim()) &&
-    /^(0?[1-9]|[12]\d|3[01])$/.test(String(date || "").trim()) &&
-    /^(0?[1-9]|1[0-2])(?::[0-5]\d)?$/.test(String(time || "").trim()) &&
-    ["AM", "PM"].includes(normalizedPeriod)
-  );
+function createInitialSlotDate() {
+  const next = new Date();
+  next.setMinutes(0, 0, 0);
+  next.setHours(next.getHours() + 1);
+  return next;
+}
+
+function mergeDatePart(base, selected) {
+  const next = new Date(base);
+  next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
+  return next;
+}
+
+function mergeTimePart(base, selected) {
+  const next = new Date(base);
+  next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
+  return next;
+}
+
+function formatSlotLabel(value) {
+  return new Date(value).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 function StatusBadge({ value }) {
@@ -35,10 +54,9 @@ function StatusBadge({ value }) {
 
 export default function StudentScreen({ user, onLogout }) {
   const [topic, setTopic] = useState("");
-  const [slotMonth, setSlotMonth] = useState("");
-  const [slotDate, setSlotDate] = useState("");
-  const [slotTime, setSlotTime] = useState("");
-  const [slotPeriod, setSlotPeriod] = useState("AM");
+  const [slotDateTime, setSlotDateTime] = useState(() => createInitialSlotDate());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [availabilitySlots, setAvailabilitySlots] = useState([]);
   const [description, setDescription] = useState("");
   const [mine, setMine] = useState([]);
@@ -71,8 +89,8 @@ export default function StudentScreen({ user, onLogout }) {
       setErr("Topic is required");
       return;
     }
-    if (safeTopic.length < TOPIC_MIN_LENGTH || safeTopic.length > TOPIC_MAX_LENGTH) {
-      setErr(`Topic must be between ${TOPIC_MIN_LENGTH} and ${TOPIC_MAX_LENGTH} characters`);
+    if (!safeDescription) {
+      setErr("Description is required");
       return;
     }
     if (safeDescription.length > DESCRIPTION_MAX_LENGTH) {
@@ -89,9 +107,7 @@ export default function StudentScreen({ user, onLogout }) {
     try {
       await api.createRequest({ topic: safeTopic, description: safeDescription, availabilitySlots });
       setTopic("");
-      setSlotMonth("");
-      setSlotDate("");
-      setSlotTime("");
+      setSlotDateTime(createInitialSlotDate());
       setAvailabilitySlots([]);
       setDescription("");
       await load();
@@ -102,21 +118,12 @@ export default function StudentScreen({ user, onLogout }) {
   }
 
   function addAvailabilitySlot() {
-    const month = slotMonth.trim();
-    const date = slotDate.trim();
-    const time = slotTime.trim();
-    const period = slotPeriod.trim().toUpperCase();
-
-    if (!month || !date || !time || !period) {
-      setErr("Enter month, date, time, and AM/PM to add a slot");
-      return;
-    }
-    if (!isValidSlotPart(month, date, time, period)) {
-      setErr("Use a valid slot like Apr / 12 / 4:30 / PM");
+    if (slotDateTime.getTime() <= Date.now()) {
+      setErr("Select a future date and time");
       return;
     }
 
-    const next = `${month} ${date} ${time} ${period}`;
+    const next = formatSlotLabel(slotDateTime);
     if (availabilitySlots.includes(next)) {
       setErr("This slot is already added");
       return;
@@ -124,14 +131,23 @@ export default function StudentScreen({ user, onLogout }) {
 
     setErr("");
     setAvailabilitySlots((prev) => [...prev, next]);
-    setSlotMonth("");
-    setSlotDate("");
-    setSlotTime("");
-    setSlotPeriod("AM");
+    setSlotDateTime(createInitialSlotDate());
   }
 
   function removeAvailabilitySlot(slot) {
     setAvailabilitySlots((prev) => prev.filter((s) => s !== slot));
+  }
+
+  function onDateChange(_event, selectedDate) {
+    setShowDatePicker(false);
+    if (!selectedDate) return;
+    setSlotDateTime((current) => mergeDatePart(current, selectedDate));
+  }
+
+  function onTimeChange(_event, selectedTime) {
+    setShowTimePicker(false);
+    if (!selectedTime) return;
+    setSlotDateTime((current) => mergeTimePart(current, selectedTime));
   }
 
   return (
@@ -164,45 +180,43 @@ export default function StudentScreen({ user, onLogout }) {
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>New Support Request</Text>
-        <TextInput placeholder="Topic" placeholderTextColor={theme.colors.textMuted} value={topic} onChangeText={setTopic} style={styles.input} />
+        <Text style={styles.helperLabel}>Topic</Text>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={topic}
+            style={styles.picker}
+            itemStyle={styles.pickerItem}
+            dropdownIconColor={theme.colors.primary}
+            onValueChange={setTopic}
+          >
+            <Picker.Item label="-- Select Topic --" value="" />
+            {KUPPI_TOPICS.map((item) => (
+              <Picker.Item key={item} label={item} value={item} />
+            ))}
+          </Picker>
+        </View>
         <Text style={styles.helperLabel}>Availability Slot</Text>
-        <View style={styles.slotRow}>
-          <TextInput
-            placeholder="Month"
-            placeholderTextColor={theme.colors.textMuted}
-            value={slotMonth}
-            onChangeText={setSlotMonth}
-            style={[styles.input, styles.slotInput]}
-          />
-          <TextInput
-            placeholder="Date"
-            placeholderTextColor={theme.colors.textMuted}
-            value={slotDate}
-            onChangeText={setSlotDate}
-            style={[styles.input, styles.slotInput]}
-          />
-          <TextInput
-            placeholder="Time"
-            placeholderTextColor={theme.colors.textMuted}
-            value={slotTime}
-            onChangeText={setSlotTime}
-            style={[styles.input, styles.slotInput]}
-          />
-        </View>
-        <View style={styles.periodRow}>
+        <View style={styles.slotPickerRow}>
           <Pressable
-            style={[styles.periodChip, slotPeriod === "AM" && styles.periodChipActive]}
-            onPress={() => setSlotPeriod("AM")}
+            style={[styles.secondaryBtn, styles.slotPickerBtn]}
+            onPress={() => setShowDatePicker(true)}
           >
-            <Text style={[styles.periodText, slotPeriod === "AM" && styles.periodTextActive]}>AM</Text>
+            <Text style={styles.secondaryBtnText}>Choose Date</Text>
           </Pressable>
           <Pressable
-            style={[styles.periodChip, slotPeriod === "PM" && styles.periodChipActive]}
-            onPress={() => setSlotPeriod("PM")}
+            style={[styles.secondaryBtn, styles.slotPickerBtn]}
+            onPress={() => setShowTimePicker(true)}
           >
-            <Text style={[styles.periodText, slotPeriod === "PM" && styles.periodTextActive]}>PM</Text>
+            <Text style={styles.secondaryBtnText}>Choose Time</Text>
           </Pressable>
         </View>
+        <Text style={styles.slotPreview}>Selected slot: {formatSlotLabel(slotDateTime)}</Text>
+        {showDatePicker ? (
+          <DateTimePicker value={slotDateTime} mode="date" minimumDate={new Date()} onChange={onDateChange} />
+        ) : null}
+        {showTimePicker ? (
+          <DateTimePicker value={slotDateTime} mode="time" onChange={onTimeChange} />
+        ) : null}
         <Pressable style={styles.secondaryBtn} onPress={addAvailabilitySlot}>
           <Text style={styles.secondaryBtnText}>Add Slot</Text>
         </Pressable>
@@ -392,40 +406,35 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surfaceAlt,
     color: theme.colors.text,
   },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.colors.surfaceAlt,
+    overflow: "hidden",
+  },
+  picker: {
+    color: theme.colors.text,
+  },
+  pickerItem: {
+    color: theme.colors.text,
+  },
   helperLabel: {
     color: theme.colors.text,
     fontWeight: "700",
     marginTop: 2,
   },
-  slotRow: {
+  slotPickerRow: {
     flexDirection: "row",
     gap: 8,
   },
-  periodRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  periodChip: {
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceAlt,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  periodChipActive: {
-    borderColor: theme.colors.primary,
-    backgroundColor: theme.colors.primary,
-  },
-  periodText: {
-    color: theme.colors.textMuted,
-    fontWeight: "700",
-  },
-  periodTextActive: {
-    color: "#fff",
-  },
-  slotInput: {
+  slotPickerBtn: {
     flex: 1,
+    minHeight: 44,
+  },
+  slotPreview: {
+    color: theme.colors.text,
+    fontWeight: "600",
   },
   slotList: {
     gap: 6,

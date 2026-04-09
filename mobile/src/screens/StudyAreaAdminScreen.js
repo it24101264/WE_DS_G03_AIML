@@ -10,6 +10,7 @@ const EMPTY_FORM = {
   latitude: "",
   longitude: "",
   radiusMeters: "",
+  studentCapacity: "",
 };
 
 function formatCoordinate(value) {
@@ -25,6 +26,7 @@ function toForm(area) {
     latitude: formatCoordinate(area.center?.latitude),
     longitude: formatCoordinate(area.center?.longitude),
     radiusMeters: formatCoordinate(area.radiusMeters),
+    studentCapacity: formatCoordinate(area.studentCapacity ?? area.capacityEstimate),
   };
 }
 
@@ -68,6 +70,7 @@ export default function StudyAreaAdminScreen({ user, onLogout }) {
         latitude: Number(form.latitude),
         longitude: Number(form.longitude),
         radiusMeters: Number(form.radiusMeters),
+        studentCapacity: Number(form.studentCapacity),
       };
 
       if (form.id) {
@@ -184,6 +187,14 @@ export default function StudyAreaAdminScreen({ user, onLogout }) {
           onChangeText={(value) => updateField("radiusMeters", value)}
           keyboardType="numeric"
         />
+        <TextInput
+          style={styles.input}
+          placeholder="Student capacity"
+          placeholderTextColor={theme.colors.textMuted}
+          value={form.studentCapacity}
+          onChangeText={(value) => updateField("studentCapacity", value)}
+          keyboardType="numeric"
+        />
         {message ? <Text style={styles.message}>{message}</Text> : null}
         <View style={styles.formActions}>
           <Pressable style={styles.primaryBtn} onPress={submit} disabled={saving}>
@@ -228,6 +239,7 @@ export default function StudyAreaAdminScreen({ user, onLogout }) {
                 </View>
               </View>
               <Text style={styles.areaMeta}>Students: {item.studentCount}</Text>
+              <Text style={styles.areaMeta}>Student capacity: {item.studentCapacity ?? item.capacityEstimate ?? 0}</Text>
               <Text style={styles.areaMeta}>Density: {item.density}</Text>
               <Text style={styles.areaMeta}>Radius: {item.radiusMeters ?? "N/A"} m</Text>
               <Text style={styles.areaMeta}>

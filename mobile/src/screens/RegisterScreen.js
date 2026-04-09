@@ -3,6 +3,7 @@ import { View, Text, TextInput, Pressable, StyleSheet, KeyboardAvoidingView, Pla
 import { api } from "../api";
 import { theme } from "../ui/theme";
 import { ROLE_OPTIONS, ROLES } from "../constants/roles";
+import { validateRegisterForm } from "../utils/authValidation";
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState("");
@@ -16,16 +17,25 @@ export default function RegisterScreen({ navigation }) {
 
   async function register() {
     setErr("");
+    const { isValid, message, values } = validateRegisterForm({
+      name,
+      email,
+      password,
+      role,
+      canteenName,
+      canteenLocation,
+    });
+    if (!isValid) {
+      setErr(message);
+      return;
+    }
+
     setLoading(true);
-    if (role === ROLES.CANTEEN_OWNER && (!canteenName || !canteenLocation)) {
-    setErr("Please enter canteen name and location");
-    setLoading(false);
-    return;
-  }
     try {
-      await api.register({ name, email, password, role, 
-        canteenName: role === ROLES.CANTEEN_OWNER ? canteenName : null,
-      canteenLocation: role === ROLES.CANTEEN_OWNER ? canteenLocation : null,
+      await api.register({
+        ...values,
+        canteenName: values.role === ROLES.CANTEEN_OWNER ? values.canteenName : null,
+        canteenLocation: values.role === ROLES.CANTEEN_OWNER ? values.canteenLocation : null,
       });
       navigation.navigate("Login");
     } catch (e) {
@@ -59,6 +69,7 @@ export default function RegisterScreen({ navigation }) {
           placeholderTextColor={theme.colors.textMuted}
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
           value={email}
           onChangeText={setEmail}
           style={styles.input}
@@ -69,6 +80,8 @@ export default function RegisterScreen({ navigation }) {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
           style={styles.input}
         />
         {role === ROLES.CANTEEN_OWNER && (

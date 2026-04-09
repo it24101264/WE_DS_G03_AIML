@@ -31,6 +31,7 @@ import CanteenMenuScreen from "./src/screens/CanteenMenuScreen";
 import { normalizeRole, ROLES } from "./src/constants/roles";
 import StudyAreasScreen from "./src/screens/StudyAreasScreen";
 import StudyAreaAdminScreen from "./src/screens/StudyAreaAdminScreen";
+import StudyAreaDetailScreen from "./src/screens/StudyAreaDetailScreen";
 // ── Payment screens ───────────────────────────────────────────────────────────
 import PaymentScreen from "./src/screens/PaymentScreen";
 import PaymentSuccessScreen from "./src/screens/PaymentSuccessScreen";
@@ -129,6 +130,9 @@ export default function App() {
             <Stack.Screen name="StudyAreas" options={{ title: "Study Areas" }}>
               {(props) => <StudyAreasScreen {...props} user={user} />}
             </Stack.Screen>
+            <Stack.Screen name="StudyAreaDetail" options={{ title: "Study Area Details" }}>
+              {(props) => <StudyAreaDetailScreen {...props} user={user} />}
+            </Stack.Screen>
           </>
         ) : (
           <>
@@ -165,6 +169,10 @@ export default function App() {
 
             <Stack.Screen name="StudyAreas" options={{ title: "Study Areas" }}>
               {(props) => <StudyAreasScreen {...props} user={user} />}
+            </Stack.Screen>
+            
+            <Stack.Screen name="StudyAreaDetail" options={{ title: "Study Area Details" }}>
+              {(props) => <StudyAreaDetailScreen {...props} user={user} />}
             </Stack.Screen>
 
             <Stack.Screen name="LostFound" options={{ title: "Lost and Found" }}>

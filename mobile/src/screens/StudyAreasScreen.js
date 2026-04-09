@@ -1,22 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../api";
 import { theme } from "../ui/theme";
 
 function densityPalette(level) {
   if (level === "Crowded") {
-    return { bg: "#ffe2e0", text: "#a1261d" };
+    return { bg: theme.colors.roseSoft, text: "#a1261d", icon: "alert-circle-outline" };
   }
   if (level === "Moderate") {
-    return { bg: "#fff0cf", text: "#8a6116" };
+    return { bg: theme.colors.goldSoft, text: "#8a6116", icon: "clock-outline" };
   }
-  return { bg: "#ddf8ee", text: "#146548" };
+  return { bg: theme.colors.accentSoft, text: "#146548", icon: "check-circle-outline" };
 }
 
-function SummaryCard({ label, value }) {
+function SummaryCard({ label, value, icon, color }) {
   return (
     <View style={styles.summaryCard}>
+      <View style={[styles.summaryIconWrap, { backgroundColor: color }]}>
+        <MaterialCommunityIcons name={icon} size={18} color="#fff" />
+      </View>
       <Text style={styles.summaryValue}>{value}</Text>
       <Text style={styles.summaryLabel}>{label}</Text>
     </View>
@@ -37,7 +41,7 @@ function summarizeAreas(areas) {
   );
 }
 
-export default function StudyAreasScreen({ user }) {
+export default function StudyAreasScreen({ user, navigation }) {
   const [areas, setAreas] = useState([]);
   const [summary, setSummary] = useState({ total: 0, free: 0, moderate: 0, crowded: 0 });
   const [loading, setLoading] = useState(true);
@@ -156,14 +160,21 @@ export default function StudyAreasScreen({ user }) {
         <Text style={styles.heroSubtitle}>Track live occupancy around campus using your device location.</Text>
 
         <View style={styles.summaryRow}>
-          <SummaryCard label="Free" value={summary.free || 0} />
-          <SummaryCard label="Moderate" value={summary.moderate || 0} />
-          <SummaryCard label="Crowded" value={summary.crowded || 0} />
+          <SummaryCard label="Free" value={summary.free || 0} icon="leaf" color={theme.colors.accent} />
+          <SummaryCard label="Moderate" value={summary.moderate || 0} icon="clock-outline" color={theme.colors.gold} />
+          <SummaryCard label="Crowded" value={summary.crowded || 0} icon="alert-outline" color={theme.colors.rose} />
         </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Your Tracking Status</Text>
+        <View style={styles.sectionHeader}>
+          <View style={styles.sectionTitleWrap}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.primarySoft }]}>
+              <MaterialCommunityIcons name="crosshairs-gps" size={18} color={theme.colors.primaryDeep} />
+            </View>
+            <Text style={styles.cardTitle}>Your Tracking Status</Text>
+          </View>
+        </View>
         <Text style={styles.cardText}>{user?.email || "Signed in user"}</Text>
         <Text style={styles.cardText}>{locationLabel}</Text>
         <Text style={styles.cardText}>
@@ -174,18 +185,25 @@ export default function StudyAreasScreen({ user }) {
           <View style={styles.insideWrap}>
             {insideAreas.map((area) => (
               <View key={area.id} style={styles.insideChip}>
+                <MaterialCommunityIcons name="book-open-page-variant-outline" size={14} color="#12604a" />
                 <Text style={styles.insideChipText}>{area.name}</Text>
               </View>
             ))}
           </View>
         ) : null}
         <Pressable style={styles.refreshBtn} onPress={refresh}>
+          <MaterialCommunityIcons name="refresh" size={16} color="#fff" />
           <Text style={styles.refreshBtnText}>Refresh areas</Text>
         </Pressable>
       </View>
 
       <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>Campus Study Area List</Text>
+        <View style={styles.sectionTitleWrap}>
+          <View style={[styles.sectionIconWrap, { backgroundColor: theme.colors.tealSoft }]}>
+            <MaterialCommunityIcons name="map-marker-radius-outline" size={18} color={theme.colors.teal} />
+          </View>
+          <Text style={styles.listTitle}>Campus Study Area List</Text>
+        </View>
         <Text style={styles.listSubtitle}>{locationLabel}</Text>
       </View>
 
@@ -194,23 +212,50 @@ export default function StudyAreasScreen({ user }) {
       {areas.map((area) => {
         const palette = densityPalette(area.density);
         return (
-          <View key={area.id} style={styles.areaCard}>
+          <Pressable
+            key={area.id}
+            style={styles.areaCard}
+            onPress={() => navigation.navigate("StudyAreaDetail", { area })}
+          >
             <View style={styles.areaTopRow}>
               <View style={styles.areaTextWrap}>
-                <Text style={styles.areaTitle}>{area.name}</Text>
+                <View style={styles.areaTitleRow}>
+                  <View style={styles.areaTitleIcon}>
+                    <MaterialCommunityIcons name="book-open-page-variant-outline" size={18} color={theme.colors.primaryDeep} />
+                  </View>
+                  <Text style={styles.areaTitle}>{area.name}</Text>
+                </View>
                 <Text style={styles.areaNote}>{area.note || "No special note"}</Text>
               </View>
               <View style={[styles.badge, { backgroundColor: palette.bg }]}>
+                <MaterialCommunityIcons name={palette.icon} size={15} color={palette.text} />
                 <Text style={[styles.badgeText, { color: palette.text }]}>{area.density}</Text>
               </View>
             </View>
 
-            <Text style={styles.areaMeta}>Students: {area.studentCount}</Text>
-            <Text style={styles.areaMeta}>Estimated capacity: {area.capacityEstimate || 0}</Text>
-            <Text style={styles.areaMeta}>Radius: {area.radiusMeters ?? "N/A"} m</Text>
+            <View style={styles.metricsRow}>
+              <View style={styles.metricPill}>
+                <MaterialCommunityIcons name="account-multiple-outline" size={15} color={theme.colors.primaryDeep} />
+                <Text style={styles.metricPillText}>Students: {area.studentCount}</Text>
+              </View>
+              <View style={styles.metricPill}>
+                <MaterialCommunityIcons name="account-group-outline" size={15} color={theme.colors.teal} />
+                <Text style={styles.metricPillText}>Capacity: {area.studentCapacity ?? area.capacityEstimate ?? 0}</Text>
+              </View>
+            </View>
+            <View style={styles.metricsRow}>
+              <View style={styles.metricPill}>
+                <MaterialCommunityIcons name="ruler-square" size={15} color={theme.colors.gold} />
+                <Text style={styles.metricPillText}>Radius: {area.radiusMeters ?? "N/A"} m</Text>
+              </View>
+              <View style={styles.metricPill}>
+                <MaterialCommunityIcons name="chevron-right" size={16} color={theme.colors.textMuted} />
+                <Text style={styles.metricPillText}>View details</Text>
+              </View>
+            </View>
             {!area.isConfigured ? <Text style={styles.areaWarning}>This study area needs admin location and radius configuration.</Text> : null}
             {area.userInside ? <Text style={styles.areaInside}>You are currently inside this area.</Text> : null}
-          </View>
+          </Pressable>
         );
       })}
     </ScrollView>
@@ -229,10 +274,11 @@ const styles = StyleSheet.create({
   },
   heroCard: {
     backgroundColor: theme.colors.primary,
-    borderRadius: 24,
-    padding: 18,
+    borderRadius: theme.radius.xl,
+    padding: 20,
     overflow: "hidden",
     gap: 12,
+    ...theme.shadow.card,
   },
   bgOrbOne: {
     position: "absolute",
@@ -269,6 +315,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.14)",
     padding: 12,
     borderRadius: 16,
+    gap: 8,
+  },
+  summaryIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   summaryValue: {
     color: "#fff",
@@ -286,11 +340,29 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    ...theme.shadow.soft,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   cardTitle: {
     color: theme.colors.text,
     fontWeight: "800",
     fontSize: 18,
+  },
+  sectionTitleWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sectionIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   cardText: {
     color: theme.colors.neutralText,
@@ -305,6 +377,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   insideChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     borderRadius: theme.radius.pill,
     backgroundColor: "#e0f6ef",
     paddingHorizontal: 12,
@@ -316,10 +391,14 @@ const styles = StyleSheet.create({
   },
   refreshBtn: {
     alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     backgroundColor: theme.colors.primary,
     borderRadius: theme.radius.sm,
     paddingHorizontal: 14,
     paddingVertical: 10,
+    ...theme.shadow.soft,
   },
   refreshBtnText: {
     color: "#fff",
@@ -342,7 +421,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
     padding: 14,
-    gap: 4,
+    gap: 10,
+    ...theme.shadow.soft,
   },
   areaTopRow: {
     flexDirection: "row",
@@ -352,6 +432,19 @@ const styles = StyleSheet.create({
   areaTextWrap: {
     flex: 1,
     gap: 4,
+  },
+  areaTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  areaTitleIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: theme.colors.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
   },
   areaTitle: {
     color: theme.colors.text,
@@ -365,6 +458,24 @@ const styles = StyleSheet.create({
     color: theme.colors.neutralText,
     fontWeight: "600",
   },
+  metricsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  metricPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: theme.colors.surfaceAlt,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  metricPillText: {
+    color: theme.colors.neutralText,
+    fontWeight: "700",
+  },
   areaInside: {
     color: theme.colors.successText,
     fontWeight: "800",
@@ -376,6 +487,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   badge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     borderRadius: theme.radius.pill,
     paddingHorizontal: 12,
     paddingVertical: 8,
