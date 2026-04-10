@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -22,8 +22,70 @@ function RequestDecisionBadge({ status }) {
   );
 }
 
-function RequestCard({ item, onOpen, onDelete, deleting }) {
+function PaymentStatusBadge({ paymentStatus }) {
+  if (!paymentStatus || paymentStatus === "unpaid") return null;
+
+  const config = {
+    paid: { label: "✅ Paid", bg: theme.colors.successBg, text: theme.colors.successText },
+    cod_pending: { label: "💵 Cash on Pickup", bg: theme.colors.warningBg, text: theme.colors.warningText },
+    failed: { label: "❌ Payment Failed", bg: "#ffe2df", text: theme.colors.danger },
+  }[paymentStatus];
+
+  if (!config) return null;
+
+  return (
+    <View style={[styles.paymentBadge, { backgroundColor: config.bg }]}>
+      <Text style={[styles.paymentBadgeText, { color: config.text }]}>{config.label}</Text>
+    </View>
+  );
+}
+
+function canPay(item) {
+  const status = String(item?.status || "PENDING").toUpperCase();
+  const paymentStatus = item?.paymentStatus || "unpaid";
+  const pickupDateTime = item?.pickupDateTime;
+
+  if (status !== "ACCEPTED") return false;
+
+  const alreadyPaid = paymentStatus === "paid" || paymentStatus === "cod_pending";
+  if (alreadyPaid) return false;
+
+  if (!pickupDateTime) return true;
+
+  try {
+    const pickupTime = new Date(pickupDateTime).getTime();
+    const now = Date.now();
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    return now <= pickupTime + TWO_HOURS_MS;
+  } catch (e) {
+    return true;
+  }
+}
+
+function isPaymentTimeExpired(item) {
+  const status = String(item?.status || "PENDING").toUpperCase();
+  const paymentStatus = item?.paymentStatus || "unpaid";
+  const pickupDateTime = item?.pickupDateTime;
+
+  if (status !== "ACCEPTED") return false;
+  if (paymentStatus === "paid" || paymentStatus === "cod_pending") return false;
+  if (!pickupDateTime) return false;
+
+  try {
+    const pickupTime = new Date(pickupDateTime).getTime();
+    const now = Date.now();
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+    return now > pickupTime + TWO_HOURS_MS;
+  } catch (e) {
+    return false;
+  }
+}
+
+function RequestCard({ item, onOpen, onDelete, onPay, onReoffer, deleting }) {
+  const isBought = String(item?.paymentStatus || "") === "paid";
   const finalized = String(item?.status || "PENDING").toUpperCase() !== "PENDING";
+  const showPayNow = canPay(item);
+  const showReoffer = String(item?.status || "PENDING").toUpperCase() === "DECLINED";
 
   return (
     <View style={styles.requestCard}>
@@ -34,8 +96,17 @@ function RequestCard({ item, onOpen, onDelete, deleting }) {
           <Text style={styles.requestPrice}>Your offer: {formatCurrency(item?.negotiatedPrice)}</Text>
         </View>
         <View style={styles.badgeStack}>
-          <RequestDecisionBadge status={item?.status} />
-          <SellerStatusBadge status={item?.post?.status || MARKETPLACE_STATUS.ACTIVE} />
+          {isBought ? (
+            <View style={styles.boughtBadge}>
+              <Text style={styles.boughtBadgeText}>YOU BOUGHT THIS</Text>
+            </View>
+          ) : (
+            <>
+              <RequestDecisionBadge status={item?.status} />
+              <SellerStatusBadge status={item?.post?.status || MARKETPLACE_STATUS.ACTIVE} />
+              <PaymentStatusBadge paymentStatus={item?.paymentStatus} />
+            </>
+          )}
         </View>
       </View>
 
@@ -44,19 +115,87 @@ function RequestCard({ item, onOpen, onDelete, deleting }) {
         Seller mobile: {item?.sellerContact || item?.post?.contactNumber || "Hidden until the seller accepts your offer"}
       </Text>
       <Text style={styles.metaLine}>Updated: {formatMarketplaceTime(item?.updatedAt || item?.createdAt)}</Text>
-      {String(item?.status || "PENDING").toUpperCase() === "ACCEPTED" ? <Text style={styles.acceptedText}>Your offer was accepted by the seller. You can now see both contact numbers.</Text> : null}
-      {String(item?.status || "PENDING").toUpperCase() === "DECLINED" ? <Text style={styles.declinedText}>This offer was declined by the seller.</Text> : null}
-      {String(item?.status || "PENDING").toUpperCase() === "PENDING" ? <Text style={styles.pendingText}>Phone numbers will be shared only after the seller accepts your offer.</Text> : null}
+
+      {isBought ? (
+        <Text style={styles.boughtText}>You bought this item.</Text>
+      ) : String(item?.status || "PENDING").toUpperCase() === "ACCEPTED" ? (
+        isPaymentTimeExpired(item) ? (
+          <Text style={[styles.acceptedText, { color: theme.colors.danger }]}>
+            ⏰ Payment time has expired. The deal is no longer available.
+          </Text>
+        ) : (
+          <Text style={styles.acceptedText}>Your offer was accepted by the seller. You can now see both contact numbers.</Text>
+        )
+      ) : null}
+      {String(item?.status || "PENDING").toUpperCase() === "DECLINED" ? (
+        <Text style={styles.declinedText}>This offer was declined by the seller.</Text>
+      ) : null}
+      {String(item?.status || "PENDING").toUpperCase() === "PENDING" ? (
+        <Text style={styles.pendingText}>Phone numbers will be shared only after the seller accepts your offer.</Text>
+      ) : null}
+
       <Text style={styles.messageText}>{item?.message || "No message added."}</Text>
+
+      {item?.pickupLocationName || item?.pickupDate || item?.pickupTimeSlot ? (
+        <View style={styles.pickupContainer}>
+          {item?.pickupDate || item?.pickupTimeSlot ? (
+            <View style={[styles.pickupInnerRow, { gap: 28 }]}>
+              {item?.pickupDate ? (
+                <View style={styles.pickupItemContent}>
+                  <MaterialCommunityIcons name="calendar-outline" size={14} color={theme.colors.textMuted} />
+                  <Text style={styles.pickupText}>{item.pickupDate}</Text>
+                </View>
+              ) : null}
+              {item?.pickupTimeSlot ? (
+                <View style={styles.pickupItemContent}>
+                  <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.textMuted} />
+                  <Text style={styles.pickupText}>{item.pickupTimeSlot}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {item?.pickupLocationName ? (
+            <View style={styles.pickupInnerRow}>
+              <MaterialCommunityIcons name="map-marker-outline" size={14} color={theme.colors.textMuted} />
+              <Text style={styles.pickupText}>{item.pickupLocationName}</Text>
+            </View>
+          ) : null}
+        </View>
+      ) : null}
 
       <View style={styles.actionRow}>
         <Pressable style={styles.secondaryBtn} onPress={onOpen}>
           <Text style={styles.secondaryBtnText}>Open Listing</Text>
         </Pressable>
-        <Pressable style={[styles.dangerBtn, (deleting || finalized) && styles.btnDisabled]} onPress={onDelete} disabled={deleting || finalized}>
+
+        {showPayNow ? (
+          <Pressable style={styles.payNowBtn} onPress={onPay}>
+            <MaterialCommunityIcons name="credit-card-outline" size={15} color="#ffffff" />
+            <Text style={styles.payNowBtnText}>Pay Now</Text>
+          </Pressable>
+        ) : null}
+
+        {showReoffer ? (
+          <Pressable style={styles.reofferBtn} onPress={onReoffer}>
+            <MaterialCommunityIcons name="refresh" size={15} color="#ffffff" />
+            <Text style={styles.reofferBtnText}>Reoffer</Text>
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          style={[styles.dangerBtn, (deleting || finalized) && styles.btnDisabled]}
+          onPress={onDelete}
+          disabled={deleting || finalized}
+        >
           <Text style={styles.dangerBtnText}>{deleting ? "Deleting..." : "Delete Request"}</Text>
         </Pressable>
       </View>
+
+      {showPayNow ? (
+        <Text style={styles.payNudge}>
+          💡 Seller accepted your offer — complete your payment before pickup.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -66,25 +205,52 @@ export default function MarketplaceBuyerRequestsScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
+  const pollIntervalRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   const loadRequests = useCallback(async () => {
+    if (!isMountedRef.current) return;
     setLoading(true);
     try {
       const res = await api.myMarketplaceRequests();
-      setRequests(Array.isArray(res.data) ? res.data : []);
-      setError("");
+      if (isMountedRef.current) {
+        setRequests(Array.isArray(res.data) ? res.data : []);
+        setError("");
+      }
     } catch (err) {
-      setError(err.message || "Could not load your requests");
+      if (isMountedRef.current) {
+        setError(err.message || "Could not load your requests");
+      }
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadRequests();
+
+      pollIntervalRef.current = setInterval(() => {
+        if (isMountedRef.current) loadRequests();
+      }, 5000);
+
+      return () => {
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+      };
     }, [loadRequests])
   );
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
 
   function confirmDelete(requestId) {
     Alert.alert("Delete request", "This will remove the selected buying request.", [
@@ -107,20 +273,46 @@ export default function MarketplaceBuyerRequestsScreen({ navigation }) {
     ]);
   }
 
+  function handlePay(request) {
+    navigation.navigate("Payment", {
+      request,
+      post: request?.post || { title: "Marketplace Item" },
+    });
+  }
+
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroIcon}>
-            <MaterialCommunityIcons name="clipboard-list-outline" size={26} color="#ffffff" />
+        <View style={styles.heroTopRow}>
+          <View style={styles.heroTopActions}>
+            <Text style={styles.eyebrow}>Buyer</Text>
+            <Text style={styles.title}>My Requests</Text>
+            <Text style={styles.subtitle}>Review what you have requested, reopen a listing to renegotiate, or delete a request you no longer want.</Text>
           </View>
-          <Pressable style={styles.heroBtn} onPress={loadRequests}>
-            <Text style={styles.heroBtnText}>{loading ? "Refreshing..." : "Refresh"}</Text>
+        </View>
+
+        <View style={styles.actionCardRow}>
+          <View style={styles.actionCard}>
+            <View style={styles.actionCardText}>
+              <Text style={styles.actionCardLabel}>Total requests</Text>
+              <Text style={styles.actionCardCount}>{requests.length}</Text>
+            </View>
+          </View>
+          <View style={styles.actionCard}>
+            <View style={styles.actionCardText}>
+              <Text style={styles.actionCardLabel}>Accepted</Text>
+              <Text style={styles.actionCardCount}>
+                {requests.filter((r) => String(r?.status || "").toUpperCase() === "ACCEPTED").length}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.heroActions}>
+          <Pressable style={styles.heroPrimaryBtn} onPress={loadRequests}>
+            <Text style={styles.heroPrimaryBtnText}>{loading ? "Refreshing..." : "Refresh"}</Text>
           </Pressable>
         </View>
-        <Text style={styles.eyebrow}>Buyer</Text>
-        <Text style={styles.title}>My Requests</Text>
-        <Text style={styles.subtitle}>Review what you have requested, reopen a listing to renegotiate, or delete a request you no longer want.</Text>
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -141,7 +333,9 @@ export default function MarketplaceBuyerRequestsScreen({ navigation }) {
           item={request}
           deleting={deletingId === request.id}
           onOpen={() => navigation.navigate("MarketplaceBuyerDetail", { postId: request.postId })}
+          onReoffer={() => navigation.navigate("MarketplaceBuyerDetail", { postId: request.postId, reoffer: true })}
           onDelete={() => confirmDelete(request.id)}
+          onPay={() => handlePay(request)}
         />
       ))}
     </ScrollView>
@@ -154,42 +348,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#eef4ff",
   },
   content: {
-    padding: 16,
-    paddingBottom: 28,
-    gap: 14,
+    padding: 12,
+    paddingBottom: 32,
+    gap: 12,
   },
+
   hero: {
-    backgroundColor: "#113995",
-    borderRadius: 28,
-    padding: 18,
+    backgroundColor: "#0f9f8f",
+    borderRadius: 24,
+    padding: 16,
     gap: 12,
     ...theme.shadow.soft,
   },
-  heroHeader: {
+  heroTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
-  heroIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.16)",
-  },
-  heroBtn: {
-    borderRadius: theme.radius.pill,
-    backgroundColor: "rgba(255,255,255,0.14)",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  heroBtnText: {
-    color: "#ffffff",
-    fontWeight: "900",
+  heroTopActions: {
+    flex: 1,
+    gap: 4,
   },
   eyebrow: {
-    color: "#cedaff",
+    color: "#ddfff8",
     textTransform: "uppercase",
     letterSpacing: 1.2,
     fontWeight: "900",
@@ -197,20 +378,69 @@ const styles = StyleSheet.create({
   },
   title: {
     color: "#ffffff",
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "900",
+    lineHeight: 30,
   },
   subtitle: {
-    color: "#d9e3ff",
-    lineHeight: 21,
+    color: "#d5fff7",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 2,
   },
+
+  actionCardRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  actionCard: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  actionCardText: {
+    flexShrink: 1,
+    gap: 1,
+  },
+  actionCardLabel: {
+    fontSize: 11,
+    color: "#0d6f63",
+    fontWeight: "700",
+  },
+  actionCardCount: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#0d6f63",
+    lineHeight: 28,
+  },
+
+  heroActions: {
+    gap: 8,
+  },
+  heroPrimaryBtn: {
+    backgroundColor: "#ffffff",
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: "center",
+  },
+  heroPrimaryBtnText: {
+    color: "#0d6f63",
+    fontWeight: "900",
+    fontSize: 15,
+  },
+
   requestCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 22,
-    padding: 16,
+    borderRadius: 20,
+    padding: 14,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    gap: 10,
+    gap: 8,
     ...theme.shadow.soft,
   },
   requestTopRow: {
@@ -236,10 +466,30 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 12,
   },
+  paymentBadge: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  paymentBadgeText: {
+    fontWeight: "900",
+    fontSize: 11,
+  },
+  boughtBadge: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.successBg,
+  },
+  boughtBadgeText: {
+    fontWeight: "900",
+    fontSize: 12,
+    color: theme.colors.successText,
+  },
   requestTitle: {
     color: theme.colors.text,
     fontWeight: "900",
-    fontSize: 18,
+    fontSize: 16,
   },
   requestPrice: {
     color: theme.colors.primaryDeep,
@@ -248,12 +498,17 @@ const styles = StyleSheet.create({
   metaLine: {
     color: theme.colors.textMuted,
     lineHeight: 20,
+    fontSize: 13,
   },
   messageText: {
     color: theme.colors.text,
     lineHeight: 21,
   },
   acceptedText: {
+    color: theme.colors.successText,
+    fontWeight: "900",
+  },
+  boughtText: {
     color: theme.colors.successText,
     fontWeight: "900",
   },
@@ -264,6 +519,27 @@ const styles = StyleSheet.create({
   pendingText: {
     color: theme.colors.warningText,
     fontWeight: "900",
+  },
+  pickupContainer: {
+    backgroundColor: theme.colors.surfaceAlt,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  pickupInnerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pickupItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  pickupText: {
+    color: theme.colors.textMuted,
+    fontSize: 13,
   },
   actionRow: {
     flexDirection: "row",
@@ -296,22 +572,60 @@ const styles = StyleSheet.create({
   btnDisabled: {
     opacity: 0.7,
   },
+  payNowBtn: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  payNowBtnText: {
+    color: "#ffffff",
+    fontWeight: "900",
+    fontSize: 14,
+  },
+  reofferBtn: {
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  reofferBtnText: {
+    color: "#ffffff",
+    fontWeight: "900",
+    fontSize: 14,
+  },
+  payNudge: {
+    color: theme.colors.warningText,
+    backgroundColor: theme.colors.warningBg,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 12,
+    lineHeight: 18,
+  },
   emptyCard: {
     backgroundColor: theme.colors.surface,
-    borderRadius: 22,
-    padding: 18,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    gap: 10,
+    gap: 8,
   },
   emptyTitle: {
     color: theme.colors.text,
     fontWeight: "900",
-    fontSize: 18,
+    fontSize: 16,
   },
   emptySubtitle: {
     color: theme.colors.textMuted,
     lineHeight: 20,
+    fontSize: 13,
   },
   primaryBtn: {
     alignSelf: "flex-start",
@@ -327,5 +641,6 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     fontSize: 13,
+    paddingHorizontal: 2,
   },
 });

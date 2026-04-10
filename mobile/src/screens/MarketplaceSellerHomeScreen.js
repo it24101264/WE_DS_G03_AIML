@@ -6,7 +6,7 @@ import { api } from "../api";
 import { theme } from "../ui/theme";
 import { MARKETPLACE_STATUS, SellerPostCard } from "./marketplaceShared";
 
-export default function MarketplaceSellerHomeScreen({ navigation }) {
+export default function MarketplaceSellerHomeScreen({ navigation, user }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -76,6 +76,7 @@ export default function MarketplaceSellerHomeScreen({ navigation }) {
       <View style={styles.hero}>
         <Text style={styles.eyebrow}>Seller</Text>
         <Text style={styles.title}>Your Listings</Text>
+        <Text style={styles.userEmail}>{user?.email || "Signed in user"}</Text>
         <Text style={styles.subtitle}>Create posts, review buyer requests, and mark items as sold.</Text>
 
         <View style={styles.statsRow}>
@@ -168,6 +169,11 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 30,
     fontWeight: "900",
+  },
+  userEmail: {
+    color: "#e6ecff",
+    fontSize: 14,
+    fontWeight: "700",
   },
   subtitle: {
     color: "#dce6ff",

@@ -3,6 +3,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 require("dotenv").config();
 const { seedStudyAreaAdmin } = require("./src/utils/seedStudyAreaAdmin");
+const { startMarketplacePickupReminderScheduler } = require("./src/services/marketplacePickupReminder.service");
 
 const app = express();
 
@@ -33,6 +34,9 @@ app.use("/api/v1/lost-found", lostFoundRoutes);
 
 const marketplaceRoutes = require("./src/routes/marketplace.routes");
 app.use("/api/v1/marketplace", marketplaceRoutes);
+
+const paymentRoutes = require("./src/routes/payment.routes");
+app.use("/api/v1", paymentRoutes);
 
 const canteenRoutes = require("./src/routes/canteen");
 app.use("/api/v1/canteen", canteenRoutes);
@@ -72,8 +76,10 @@ async function startServer() {
     console.log("MongoDB connected");
     await seedStudyAreaAdmin();
 
-    app.listen(PORT, () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Server LAN URL: http://0.0.0.0:${PORT}`);
+      startMarketplacePickupReminderScheduler();
     });
   } catch (err) {
     console.error("Server startup failed:", err.message);

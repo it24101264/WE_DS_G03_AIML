@@ -10,18 +10,30 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
   const headers = { "Content-Type": "application/json" };
   const token = await getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  const url = `${API_BASE}${path}`;
+  console.log("API CALL ->", url);
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (err) {
+    const message = err?.message || "Network request failed";
+    console.log("API NETWORK ERROR <-", method, url, message);
+    throw new Error(`Network error (${method} ${url}): ${message}`);
+  }
 
   const text = await res.text();
   let data;
   try { data = JSON.parse(text); } catch { data = { raw: text }; }
 
-  if (!res.ok) throw new Error(data?.message || `HTTP ${res.status}`);
+  if (!res.ok) {
+    console.log("API ERROR <-", res.status, data?.message || data?.raw || "Unknown error");
+    throw new Error(data?.message || `HTTP ${res.status}`);
+  }
   return data;
 }
 
@@ -29,12 +41,22 @@ export const api = {
   register: (payload) => apiRequest("/auth/register", { method: "POST", body: payload }),
   login: (payload) => apiRequest("/auth/login", { method: "POST", body: payload }),
   me: () => apiRequest("/auth/me"),
+  updatePushToken: (expoPushToken) => apiRequest("/auth/push-token", { method: "PATCH", body: { expoPushToken } }),
   studyAreaAdminBootstrap: () => apiRequest("/study-areas/admin/bootstrap"),
   studyAreas: () => apiRequest("/study-areas"),
   syncStudyAreaPresence: (payload) => apiRequest("/study-areas/presence", { method: "POST", body: payload }),
   createStudyArea: (payload) => apiRequest("/study-areas", { method: "POST", body: payload }),
   updateStudyArea: (id, payload) => apiRequest(`/study-areas/${encodeURIComponent(id)}`, { method: "PUT", body: payload }),
   deleteStudyArea: (id) => apiRequest(`/study-areas/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  initiatePayment: (requestId, method) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}/payment`, {
+      method: "POST",
+      body: { method },
+    }),
+  getPaymentStatus: (requestId) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}/payment`),
+  confirmMarketplaceCodCollected: (requestId) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}/payment/cod-confirm`, { method: "PATCH" }),
 
   createRequest: (payload) => apiRequest("/kuppi/requests", { method: "POST", body: payload }),
   myRequests: () => apiRequest("/kuppi/requests/mine"),
@@ -69,6 +91,7 @@ export const api = {
     if (params.status) search.set("status", params.status);
     const qs = search.toString();
     return apiRequest(`/lost-found${qs ? `?${qs}` : ""}`);
+  
   },
   myLostFoundItems: () => apiRequest("/lost-found/mine"),
   lostFoundItemById: (id) => apiRequest(`/lost-found/${encodeURIComponent(id)}`),
@@ -96,6 +119,9 @@ export const api = {
     return apiRequest(`/marketplace${qs ? `?${qs}` : ""}`);
   },
   myMarketplacePosts: () => apiRequest("/marketplace/mine"),
+  myMarketplaceFavorites: () => apiRequest("/marketplace/favorites/mine"),
+  toggleMarketplaceFavorite: (postId) =>
+    apiRequest(`/marketplace/favorites/${encodeURIComponent(postId)}/toggle`, { method: "POST" }),
   marketplacePostById: (id) => apiRequest(`/marketplace/${encodeURIComponent(id)}`),
   createMarketplacePost: (payload) => apiRequest("/marketplace", { method: "POST", body: payload }),
   updateMarketplacePost: (id, payload) =>
@@ -106,8 +132,16 @@ export const api = {
   createMarketplaceRequest: (postId, payload) =>
     apiRequest(`/marketplace/${encodeURIComponent(postId)}/requests`, { method: "POST", body: payload }),
   myMarketplaceRequests: () => apiRequest("/marketplace/requests/mine"),
+  myMarketplaceCart: () => apiRequest("/marketplace/cart"),
+  addMarketplaceCartItem: (payload) => apiRequest("/marketplace/cart/items", { method: "POST", body: payload }),
+  checkoutMarketplaceCart: (payload) => apiRequest("/marketplace/cart/checkout", { method: "POST", body: payload }),
+  clearMarketplaceCart: () => apiRequest("/marketplace/cart", { method: "DELETE" }),
+  removeMarketplaceCartItem: (itemId) =>
+    apiRequest(`/marketplace/cart/items/${encodeURIComponent(itemId)}`, { method: "DELETE" }),
   updateMarketplaceRequest: (requestId, payload) =>
     apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}`, { method: "PATCH", body: payload }),
+  reofferMarketplaceRequest: (requestId, payload) =>
+    apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}/reoffer`, { method: "PATCH", body: payload }),
   decideMarketplaceRequest: (requestId, payload) =>
     apiRequest(`/marketplace/requests/${encodeURIComponent(requestId)}/decision`, { method: "PATCH", body: payload }),
   deleteMarketplaceRequest: (requestId) =>
