@@ -20,4 +20,19 @@ async function fetchGroupsFromPython({ items, minSize = 5, maxClusters = 8, topC
   return await resp.json();
 }
 
-module.exports = { fetchGroupsFromPython };
+async function embedTextsInPython(texts = []) {
+  const resp = await fetch(`${PYTHON_ML_URL}/ml/embed`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texts }),
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Python ML error ${resp.status}: ${text}`);
+  }
+
+  return await resp.json();
+}
+
+module.exports = { fetchGroupsFromPython, embedTextsInPython };

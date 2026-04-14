@@ -94,6 +94,7 @@ export const api = {
   
   },
   myLostFoundItems: () => apiRequest("/lost-found/mine"),
+  lostFoundAiSearch: (payload) => apiRequest("/lost-found/ai-search", { method: "POST", body: payload }),
   lostFoundItemById: (id) => apiRequest(`/lost-found/${encodeURIComponent(id)}`),
   updateLostFoundItem: (id, payload) =>
     apiRequest(`/lost-found/${encodeURIComponent(id)}`, { method: "PATCH", body: payload }),

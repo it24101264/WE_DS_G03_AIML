@@ -14,6 +14,8 @@ try:
 except Exception:
     SentenceTransformer = None
 
+_EMBED_MODEL = None
+
 _WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9_+-]{1,}")
 _STOPWORDS = {
     "about", "after", "again", "also", "and", "any", "are", "been", "before", "being",
@@ -26,16 +28,33 @@ def _clean_text(value: str) -> str:
     return " ".join(str(value or "").strip().split())
 
 
-def _vectorize(texts: List[str]) -> np.ndarray:
-    if SentenceTransformer is not None:
+def _get_embed_model():
+    global _EMBED_MODEL
+    if SentenceTransformer is None:
+        return None
+    if _EMBED_MODEL is None:
+        _EMBED_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+    return _EMBED_MODEL
+
+
+def embed_texts(texts: List[str]) -> np.ndarray:
+    cleaned_texts = [_clean_text(text) for text in texts]
+    model = _get_embed_model()
+    if model is not None:
         try:
-            model = SentenceTransformer("all-MiniLM-L6-v2")
-            return np.asarray(model.encode(texts, normalize_embeddings=True))
+            return np.asarray(model.encode(cleaned_texts, normalize_embeddings=True))
         except Exception:
             pass
 
     vectorizer = TfidfVectorizer(stop_words="english", max_features=2000, ngram_range=(1, 2))
-    return vectorizer.fit_transform(texts).toarray()
+    vectors = vectorizer.fit_transform(cleaned_texts).toarray()
+    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+    norms[norms == 0] = 1.0
+    return vectors / norms
+
+
+def _vectorize(texts: List[str]) -> np.ndarray:
+    return embed_texts(texts)
 
 
 def _pick_cluster_count(item_count: int, max_clusters: int) -> int:

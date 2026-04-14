@@ -4,6 +4,7 @@ const lostFoundController = require("../controllers/lostFound.controller");
 
 router.get("/", authRequired, lostFoundController.getItems);
 router.get("/mine", authRequired, lostFoundController.getMyItems);
+router.post("/ai-search", authRequired, lostFoundController.aiSearchItems);
 router.get("/:id", authRequired, lostFoundController.getItemById);
 router.patch("/:id", authRequired, lostFoundController.updateItem);
 router.delete("/:id", authRequired, lostFoundController.deleteItem);
