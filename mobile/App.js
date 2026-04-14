@@ -12,6 +12,7 @@ import RegisterScreen from "./src/screens/RegisterScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import LostFoundCreateScreen from "./src/screens/LostFoundCreateScreen";
 import LostFoundDetailScreen from "./src/screens/LostFoundDetailScreen";
+import LostFoundAiSearchScreen from "./src/screens/LostFoundAiSearchScreen";
 import LostFoundMyPostsScreen from "./src/screens/LostFoundMyPostsScreen";
 import LostFoundScreen from "./src/screens/LostFoundScreen";
 import MarketplaceBuyerScreen from "./src/screens/MarketplaceBuyerScreen";
@@ -189,6 +190,10 @@ export default function App() {
 
             <Stack.Screen name="LostFoundMyPosts" options={{ title: "My Posts" }}>
               {(props) => <LostFoundMyPostsScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="LostFoundAiSearch" options={{ title: "AI Search" }}>
+              {(props) => <LostFoundAiSearchScreen {...props} user={user} />}
             </Stack.Screen>
 
             <Stack.Screen name="LostFoundDetail" options={{ title: "Post Details" }}>

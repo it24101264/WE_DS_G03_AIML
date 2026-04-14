@@ -1,6 +1,7 @@
 const LostFoundItem = require("../models/LostFoundItem");
 const User = require("../models/user");
 const { makeId } = require("../utils/id");
+const { embedTextsInPython } = require("../services/ml/pythonClient");
 
 const {
   LOCATION_VALUES,
@@ -50,11 +51,120 @@ function normalizeImageUrl(value) {
   return null;
 }
 
+function cleanText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
 function countWords(value) {
   return String(value || "")
     .trim()
     .split(/\s+/)
     .filter(Boolean).length;
+}
+
+function buildSearchText({ title, description, category, location, type }) {
+  return [title, description, category, location, type].map(cleanText).filter(Boolean).join(" ");
+}
+
+async function createEmbeddingPayload(searchText) {
+  const safeSearchText = cleanText(searchText);
+  if (!safeSearchText) {
+    return {
+      searchText: "",
+      descriptionEmbedding: [],
+      embeddingModel: "",
+      embeddingUpdatedAt: null,
+    };
+  }
+
+  try {
+    const resp = await embedTextsInPython([safeSearchText]);
+    const embedding = Array.isArray(resp?.embeddings?.[0]) ? resp.embeddings[0].map((value) => Number(value) || 0) : [];
+    return {
+      searchText: safeSearchText,
+      descriptionEmbedding: embedding,
+      embeddingModel: embedding.length ? "all-MiniLM-L6-v2" : "",
+      embeddingUpdatedAt: embedding.length ? new Date() : null,
+    };
+  } catch (err) {
+    console.error("LostFound embedding error:", err.message);
+    return {
+      searchText: safeSearchText,
+      descriptionEmbedding: [],
+      embeddingModel: "",
+      embeddingUpdatedAt: null,
+    };
+  }
+}
+
+function cosineSimilarity(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || !left.length || left.length !== right.length) {
+    return 0;
+  }
+  let dot = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const a = Number(left[index]) || 0;
+    const b = Number(right[index]) || 0;
+    dot += a * b;
+    leftNorm += a * a;
+    rightNorm += b * b;
+  }
+  if (!leftNorm || !rightNorm) return 0;
+  return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
+}
+
+async function ensureEmbeddings(items = []) {
+  const pending = items.filter((item) => !Array.isArray(item.descriptionEmbedding) || !item.descriptionEmbedding.length);
+  if (!pending.length) {
+    return items;
+  }
+
+  try {
+    const texts = pending.map((item) =>
+      buildSearchText({
+        title: item.title,
+        description: item.description,
+        category: item.category,
+        location: item.location,
+        type: item.type,
+      })
+    );
+    const resp = await embedTextsInPython(texts);
+    const embeddings = Array.isArray(resp?.embeddings) ? resp.embeddings : [];
+
+    await Promise.all(
+      pending.map((item, index) =>
+        LostFoundItem.updateOne(
+          { _id: item._id },
+          {
+            $set: {
+              searchText: texts[index],
+              descriptionEmbedding: Array.isArray(embeddings[index]) ? embeddings[index].map((value) => Number(value) || 0) : [],
+              embeddingModel: Array.isArray(embeddings[index]) && embeddings[index].length ? "all-MiniLM-L6-v2" : "",
+              embeddingUpdatedAt: Array.isArray(embeddings[index]) && embeddings[index].length ? new Date() : null,
+            },
+          }
+        )
+      )
+    );
+
+    return items.map((item, index) => {
+      const pendingIndex = pending.findIndex((pendingItem) => String(pendingItem._id) === String(item._id));
+      if (pendingIndex === -1) return item;
+      return {
+        ...item,
+        searchText: texts[pendingIndex],
+        descriptionEmbedding: Array.isArray(embeddings[pendingIndex]) ? embeddings[pendingIndex].map((value) => Number(value) || 0) : [],
+        embeddingModel: Array.isArray(embeddings[pendingIndex]) && embeddings[pendingIndex].length ? "all-MiniLM-L6-v2" : "",
+        embeddingUpdatedAt: Array.isArray(embeddings[pendingIndex]) && embeddings[pendingIndex].length ? new Date() : null,
+      };
+    });
+  } catch (err) {
+    console.error("LostFound ensureEmbeddings error:", err.message);
+    return items;
+  }
 }
 
 function validateItemInput({
@@ -190,6 +300,16 @@ exports.createItem = async (req, res, next) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    const embeddingPayload = await createEmbeddingPayload(
+      buildSearchText({
+        title: safeTitle,
+        description: safeDescription,
+        category: safeCategory,
+        location: safeLocation,
+        type: safeType,
+      })
+    );
+
     const item = await LostFoundItem.create({
       id: makeId("lf_"),
       userId,
@@ -204,6 +324,10 @@ exports.createItem = async (req, res, next) => {
       category: safeCategory,
       status: "OPEN",
       claimQuestion: safeType === "FOUND" ? safeClaimQuestion : "",
+      searchText: embeddingPayload.searchText,
+      descriptionEmbedding: embeddingPayload.descriptionEmbedding,
+      embeddingModel: embeddingPayload.embeddingModel,
+      embeddingUpdatedAt: embeddingPayload.embeddingUpdatedAt,
     });
 
     return res.status(201).json({ success: true, data: toPublicItem(item.toObject(), userId) });
@@ -235,6 +359,16 @@ exports.updateItem = async (req, res, next) => {
       return res.status(400).json({ success: false, message: "Cannot change a found post with claims into a lost post" });
     }
 
+    const embeddingPayload = await createEmbeddingPayload(
+      buildSearchText({
+        title: safeTitle,
+        description: safeDescription,
+        category: safeCategory,
+        location: safeLocation,
+        type: safeType,
+      })
+    );
+
     item.title = safeTitle;
     item.titleKey = safeTitle.toLowerCase();
     item.description = safeDescription;
@@ -243,6 +377,10 @@ exports.updateItem = async (req, res, next) => {
     item.category = safeCategory;
     item.imageUrl = safeImageUrl || "";
     item.claimQuestion = safeType === "FOUND" ? safeClaimQuestion : "";
+    item.searchText = embeddingPayload.searchText;
+    item.descriptionEmbedding = embeddingPayload.descriptionEmbedding;
+    item.embeddingModel = embeddingPayload.embeddingModel;
+    item.embeddingUpdatedAt = embeddingPayload.embeddingUpdatedAt;
 
     await item.save();
     return res.json({ success: true, data: toPublicItem(item.toObject(), userId), message: "Post updated" });
@@ -361,6 +499,79 @@ exports.getMyItems = async (req, res, next) => {
     const userId = String(req.user?.id || req.user?.userId || "").trim();
     const items = await LostFoundItem.find({ userId }).sort({ createdAt: -1 }).lean();
     return res.json({ success: true, data: items.map((item) => toPublicItem(item, userId)) });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.aiSearchItems = async (req, res, next) => {
+  try {
+    const viewerId = String(req.user?.id || req.user?.userId || "").trim();
+    const sourceItemId = String(req.body?.sourceItemId || "").trim();
+    let description = cleanText(req.body?.description);
+    let targetType = req.body?.targetType ? normalizeType(req.body.targetType) : null;
+    const safeLocation = req.body?.location ? normalizeLocation(req.body.location) : null;
+    const safeCategory = req.body?.category ? normalizeCategory(req.body.category) : null;
+    const safeStatus = req.body?.status ? normalizeStatus(req.body.status) : "OPEN";
+    const limit = Math.min(20, Math.max(1, Number(req.body?.limit) || 8));
+    let sourceItem = null;
+
+    if (sourceItemId) {
+      sourceItem = await LostFoundItem.findOne({ id: sourceItemId }).lean();
+      if (!sourceItem) {
+        return res.status(404).json({ success: false, message: "Source post not found" });
+      }
+      if (!description) {
+        description = cleanText(sourceItem.description || sourceItem.title);
+      }
+      if (!targetType) {
+        targetType = sourceItem.type === "LOST" ? "FOUND" : "LOST";
+      }
+    }
+
+    if (!description) {
+      return res.status(400).json({ success: false, message: "description or sourceItemId is required" });
+    }
+
+    const query = {};
+    if (targetType) query.type = targetType;
+    if (safeLocation) query.location = safeLocation;
+    if (safeCategory) query.category = safeCategory;
+    if (safeStatus) query.status = safeStatus;
+    if (sourceItemId) query.id = { $ne: sourceItemId };
+
+    let candidates = await LostFoundItem.find(query).sort({ createdAt: -1 }).lean();
+    candidates = await ensureEmbeddings(candidates);
+
+    const queryEmbeddingPayload = await createEmbeddingPayload(
+      buildSearchText({
+        title: sourceItem?.title || "",
+        description,
+        category: safeCategory || sourceItem?.category || "",
+        location: safeLocation || sourceItem?.location || "",
+        type: sourceItem?.type || "",
+      })
+    );
+
+    const scored = candidates
+      .map((item) => ({
+        ...toPublicItem(item, viewerId),
+        similarityScore: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, item.descriptionEmbedding),
+      }))
+      .filter((item) => item.similarityScore > 0)
+      .sort((left, right) => right.similarityScore - left.similarityScore)
+      .slice(0, limit);
+
+    return res.json({
+      success: true,
+      data: scored,
+      meta: {
+        sourceItemId: sourceItem?.id || "",
+        targetType: targetType || "",
+        query: description,
+        totalCandidates: candidates.length,
+      },
+    });
   } catch (err) {
     return next(err);
   }
