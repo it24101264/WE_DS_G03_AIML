@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../api";
@@ -108,6 +108,16 @@ function BuyerBrowseCard({ item, onPress, isOwnPost, favorited, onToggleFavorite
   );
 }
 
+function ScorePill({ score }) {
+  const percent = Math.max(0, Math.min(100, Math.round((Number(score) || 0) * 100)));
+  return (
+    <View style={styles.scorePill}>
+      <MaterialCommunityIcons name="creation" size={14} color={theme.colors.primaryDeep} />
+      <Text style={styles.scorePillText}>{percent}% match</Text>
+    </View>
+  );
+}
+
 export default function MarketplaceBuyerScreen({ navigation, user }) {
   const [posts, setPosts] = useState([]);
   const [myPosts, setMyPosts] = useState([]);
@@ -118,6 +128,11 @@ export default function MarketplaceBuyerScreen({ navigation, user }) {
   const [cartCount, setCartCount] = useState(0);
   const [requestCount, setRequestCount] = useState(0);
   const [search, setSearch] = useState("");
+  const [aiDescription, setAiDescription] = useState("");
+  const [aiResults, setAiResults] = useState([]);
+  const [showAiResults, setShowAiResults] = useState(false);
+  const [aiSearching, setAiSearching] = useState(false);
+  const [aiError, setAiError] = useState("");
   const [sort, setSort] = useState("newest");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -267,6 +282,27 @@ export default function MarketplaceBuyerScreen({ navigation, user }) {
     navigation.navigate("MarketplaceBuyerDetail", { postId: post.id });
   }
 
+  async function runAiSearch() {
+    const description = String(aiDescription || "").trim();
+    if (!description) {
+      setAiError("Enter a detailed product description first.");
+      return;
+    }
+
+    setAiSearching(true);
+    setAiError("");
+    setShowAiResults(true);
+    try {
+      const res = await api.marketplaceAiSearch({ description, limit: 8, status: "ACTIVE" });
+      setAiResults(Array.isArray(res?.data) ? res.data : []);
+    } catch (err) {
+      setAiResults([]);
+      setAiError(err.message || "AI marketplace search failed");
+    } finally {
+      setAiSearching(false);
+    }
+  }
+
   const favoritePosts = posts.filter((post) => favoriteIds.has(String(post.id)));
   const regularPosts = posts;
   const shouldShowRegularPosts = !showMySellerPosts && !showFavorites;
@@ -322,6 +358,51 @@ export default function MarketplaceBuyerScreen({ navigation, user }) {
           onChangeText={setSearch}
           onSubmitEditing={loadPosts}
         />
+        <View style={styles.aiPanel}>
+          <View style={styles.aiPanelHeader}>
+            <View style={styles.aiIconWrap}>
+              <MaterialCommunityIcons name="creation-outline" size={18} color="#0d6f63" />
+            </View>
+            <View style={styles.aiPanelCopy}>
+              <Text style={styles.aiPanelTitle}>AI Product Suggestions</Text>
+              <Text style={styles.aiPanelText}>
+                Describe what you need in detail and AI will suggest listings that may be useful for you.
+              </Text>
+            </View>
+          </View>
+
+          <TextInput
+            style={styles.aiInput}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            placeholder="Example: I need a lightweight laptop for coding, note taking, and long battery life on a student budget."
+            placeholderTextColor={theme.colors.textMuted}
+            value={aiDescription}
+            onChangeText={setAiDescription}
+          />
+
+          {aiError ? <Text style={styles.aiError}>{aiError}</Text> : null}
+
+          <View style={styles.aiActionRow}>
+            <Pressable style={[styles.aiSearchBtn, aiSearching && styles.aiSearchBtnDisabled]} onPress={runAiSearch} disabled={aiSearching}>
+              {aiSearching ? <ActivityIndicator color="#ffffff" /> : <MaterialCommunityIcons name="brain" size={18} color="#ffffff" />}
+              <Text style={styles.aiSearchBtnText}>{aiSearching ? "Finding Matches..." : "Find with AI"}</Text>
+            </Pressable>
+            {showAiResults ? (
+              <Pressable
+                style={styles.aiClearBtn}
+                onPress={() => {
+                  setShowAiResults(false);
+                  setAiResults([]);
+                  setAiError("");
+                }}
+              >
+                <Text style={styles.aiClearBtnText}>Clear</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
 
         {/* ── Sort chips ── */}
         <View style={styles.filterWrap}>
@@ -378,6 +459,44 @@ export default function MarketplaceBuyerScreen({ navigation, user }) {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {/* ── Pickup reminder banner ── */}
+      {showAiResults ? (
+        <View style={styles.aiResultsPanel}>
+          <View style={styles.aiResultsHeader}>
+            <View style={styles.aiResultsCopy}>
+              <Text style={styles.sectionTitle}>AI Suggestions</Text>
+              <Text style={styles.aiResultsText}>
+                {aiSearching
+                  ? "Looking for the most relevant products..."
+                  : aiResults.length
+                    ? "Suggestions ranked by semantic similarity."
+                    : "No AI matches yet. Try a more detailed need or different wording."}
+              </Text>
+            </View>
+            <View style={styles.aiResultsCount}>
+              <Text style={styles.aiResultsCountText}>{aiResults.length} result(s)</Text>
+            </View>
+          </View>
+
+          {aiResults.map((post) => (
+            <View key={`ai-${post.id}`} style={styles.aiResultCard}>
+              <View style={styles.aiResultMetaRow}>
+                <ScorePill score={post.similarityScore} />
+                <Pressable style={styles.aiOpenBtn} onPress={() => openBuyerPost(post, false)}>
+                  <Text style={styles.aiOpenBtnText}>Open Listing</Text>
+                </Pressable>
+              </View>
+              <BuyerBrowseCard
+                item={post}
+                isOwnPost={false}
+                favorited={favoriteIds.has(String(post.id))}
+                onToggleFavorite={handleToggleFavorite}
+                onPress={() => openBuyerPost(post, false)}
+              />
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       {upcomingPickups.length > 0 ? (
         <View style={styles.reminderCard}>
           <View style={styles.reminderTopRow}>
@@ -580,6 +699,91 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     fontSize: 14,
   },
+  aiPanel: {
+    backgroundColor: "rgba(255,255,255,0.16)",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.24)",
+    padding: 12,
+    gap: 10,
+  },
+  aiPanelHeader: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "flex-start",
+  },
+  aiIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#d8fff9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  aiPanelCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  aiPanelTitle: {
+    color: "#ffffff",
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  aiPanelText: {
+    color: "#d5fff7",
+    lineHeight: 18,
+    fontSize: 12,
+  },
+  aiInput: {
+    minHeight: 96,
+    borderRadius: 14,
+    backgroundColor: "#ffffff",
+    color: theme.colors.text,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+  },
+  aiActionRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  aiSearchBtn: {
+    flex: 1,
+    backgroundColor: "#0d6f63",
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+  },
+  aiSearchBtnDisabled: {
+    opacity: 0.8,
+  },
+  aiSearchBtnText: {
+    color: "#ffffff",
+    fontWeight: "900",
+    fontSize: 14,
+  },
+  aiClearBtn: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.45)",
+    paddingHorizontal: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+  },
+  aiClearBtnText: {
+    color: "#ffffff",
+    fontWeight: "800",
+    fontSize: 13,
+  },
+  aiError: {
+    color: "#fff1f1",
+    fontSize: 13,
+    fontWeight: "700",
+  },
 
   // ─── Sort chips ──────────────────────────────────────────
   filterWrap: {
@@ -660,6 +864,81 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 6,
     ...theme.shadow.soft,
+  },
+  aiResultsPanel: {
+    backgroundColor: "rgba(255,255,255,0.78)",
+    borderRadius: 20,
+    padding: 14,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#d7e2f3",
+    ...theme.shadow.soft,
+  },
+  aiResultsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 10,
+  },
+  aiResultsCopy: {
+    flex: 1,
+  },
+  aiResultsText: {
+    color: theme.colors.textMuted,
+    lineHeight: 18,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  aiResultsCount: {
+    backgroundColor: "#edf8f6",
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: "#bfe8e1",
+  },
+  aiResultsCountText: {
+    color: "#0d6f63",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+  aiResultCard: {
+    gap: 4,
+  },
+  aiResultMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+  },
+  aiOpenBtn: {
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: "#0f9f8f",
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  aiOpenBtnText: {
+    color: "#0f9f8f",
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  scorePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#e8f6f3",
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: "#bfe8e1",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  scorePillText: {
+    color: theme.colors.primaryDeep,
+    fontWeight: "800",
+    fontSize: 12,
   },
   reminderTopRow: {
     flexDirection: "row",

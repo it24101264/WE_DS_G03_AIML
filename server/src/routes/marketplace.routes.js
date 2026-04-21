@@ -4,6 +4,7 @@ const marketplaceController = require("../controllers/marketplace.controller");
 
 router.get("/", authRequired, marketplaceController.getPosts);
 router.get("/mine", authRequired, marketplaceController.getMyPosts);
+router.post("/ai-search", authRequired, marketplaceController.aiSearchPosts);
 router.get("/favorites/mine", authRequired, marketplaceController.getMyFavorites);
 router.get("/requests/mine", authRequired, marketplaceController.getMyRequests);
 router.post("/favorites/:postId/toggle", authRequired, marketplaceController.toggleFavorite);
