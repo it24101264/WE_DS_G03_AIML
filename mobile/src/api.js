@@ -119,6 +119,7 @@ export const api = {
     const qs = search.toString();
     return apiRequest(`/marketplace${qs ? `?${qs}` : ""}`);
   },
+  marketplaceAiSearch: (payload) => apiRequest("/marketplace/ai-search", { method: "POST", body: payload }),
   myMarketplacePosts: () => apiRequest("/marketplace/mine"),
   myMarketplaceFavorites: () => apiRequest("/marketplace/favorites/mine"),
   toggleMarketplaceFavorite: (postId) =>

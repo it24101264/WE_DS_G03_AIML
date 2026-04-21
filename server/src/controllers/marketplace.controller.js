@@ -4,6 +4,7 @@ const MarketplaceCart = require("../models/MarketplaceCart");
 const MarketplaceFavorite = require("../models/MarketplaceFavorite");
 const User = require("../models/user");
 const { makeId } = require("../utils/id");
+const { embedTextsInPython } = require("../services/ml/pythonClient");
 
 const { STATUS_VALUES } = require("../models/MarketplacePost");
 const { REQUEST_STATUS_VALUES } = require("../models/MarketplaceRequest");
@@ -23,6 +24,114 @@ const MARKETPLACE_LIMITS = {
   minOfferRatio: 0.3,
   requestUpdateWindowHours: 3,
 };
+
+function cleanText(value) {
+  return String(value || "").trim().replace(/\s+/g, " ");
+}
+
+function buildMarketplaceSearchText({ title, description, sellerName }) {
+  return [title, description, sellerName].map(cleanText).filter(Boolean).join(" ");
+}
+
+async function createMarketplaceEmbeddingPayload(searchText) {
+  const safeSearchText = cleanText(searchText);
+  if (!safeSearchText) {
+    return {
+      searchText: "",
+      descriptionEmbedding: [],
+      embeddingModel: "",
+      embeddingUpdatedAt: null,
+    };
+  }
+
+  try {
+    const resp = await embedTextsInPython([safeSearchText]);
+    const embedding = Array.isArray(resp?.embeddings?.[0]) ? resp.embeddings[0].map((value) => Number(value) || 0) : [];
+    return {
+      searchText: safeSearchText,
+      descriptionEmbedding: embedding,
+      embeddingModel: embedding.length ? "all-MiniLM-L6-v2" : "",
+      embeddingUpdatedAt: embedding.length ? new Date() : null,
+    };
+  } catch (err) {
+    console.error("Marketplace embedding error:", err.message);
+    return {
+      searchText: safeSearchText,
+      descriptionEmbedding: [],
+      embeddingModel: "",
+      embeddingUpdatedAt: null,
+    };
+  }
+}
+
+function cosineSimilarity(left, right) {
+  if (!Array.isArray(left) || !Array.isArray(right) || !left.length || left.length !== right.length) {
+    return 0;
+  }
+
+  let dot = 0;
+  let leftNorm = 0;
+  let rightNorm = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const a = Number(left[index]) || 0;
+    const b = Number(right[index]) || 0;
+    dot += a * b;
+    leftNorm += a * a;
+    rightNorm += b * b;
+  }
+  if (!leftNorm || !rightNorm) return 0;
+  return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
+}
+
+async function ensureMarketplaceEmbeddings(posts = []) {
+  const pending = posts.filter((post) => !Array.isArray(post.descriptionEmbedding) || !post.descriptionEmbedding.length);
+  if (!pending.length) {
+    return posts;
+  }
+
+  try {
+    const texts = pending.map((post) =>
+      buildMarketplaceSearchText({
+        title: post.title,
+        description: post.description,
+        sellerName: post.sellerName || post.userName,
+      })
+    );
+    const resp = await embedTextsInPython(texts);
+    const embeddings = Array.isArray(resp?.embeddings) ? resp.embeddings : [];
+
+    await Promise.all(
+      pending.map((post, index) =>
+        MarketplacePost.updateOne(
+          { _id: post._id },
+          {
+            $set: {
+              searchText: texts[index],
+              descriptionEmbedding: Array.isArray(embeddings[index]) ? embeddings[index].map((value) => Number(value) || 0) : [],
+              embeddingModel: Array.isArray(embeddings[index]) && embeddings[index].length ? "all-MiniLM-L6-v2" : "",
+              embeddingUpdatedAt: Array.isArray(embeddings[index]) && embeddings[index].length ? new Date() : null,
+            },
+          }
+        )
+      )
+    );
+
+    return posts.map((post) => {
+      const pendingIndex = pending.findIndex((pendingPost) => String(pendingPost._id) === String(post._id));
+      if (pendingIndex === -1) return post;
+      return {
+        ...post,
+        searchText: texts[pendingIndex],
+        descriptionEmbedding: Array.isArray(embeddings[pendingIndex]) ? embeddings[pendingIndex].map((value) => Number(value) || 0) : [],
+        embeddingModel: Array.isArray(embeddings[pendingIndex]) && embeddings[pendingIndex].length ? "all-MiniLM-L6-v2" : "",
+        embeddingUpdatedAt: Array.isArray(embeddings[pendingIndex]) && embeddings[pendingIndex].length ? new Date() : null,
+      };
+    });
+  } catch (err) {
+    console.error("Marketplace ensureEmbeddings error:", err.message);
+    return posts;
+  }
+}
 
 function normalizeStatus(value) {
   const normalized = String(value || "").trim().toUpperCase();
@@ -479,6 +588,10 @@ exports.createPost = async (req, res, next) => {
     const user = await findUserOr404(userId, res);
     if (!user) return;
 
+    const embeddingPayload = await createMarketplaceEmbeddingPayload(
+      buildMarketplaceSearchText({ title, description, sellerName })
+    );
+
     const post = await MarketplacePost.create({
       id: makeId("mp_"),
       userId,
@@ -489,6 +602,10 @@ exports.createPost = async (req, res, next) => {
       title,
       titleKey: title.toLowerCase(),
       description,
+      searchText: embeddingPayload.searchText,
+      descriptionEmbedding: embeddingPayload.descriptionEmbedding,
+      embeddingModel: embeddingPayload.embeddingModel,
+      embeddingUpdatedAt: embeddingPayload.embeddingUpdatedAt,
       price,
       availableQuantity: 1,
       status: "ACTIVE",
@@ -554,6 +671,64 @@ exports.getMyPosts = async (req, res, next) => {
     const countMap = new Map(counts.map((row) => [String(row._id), Number(row.count || 0)]));
     const data = posts.map((post) => ({ ...post, requestCount: countMap.get(String(post.id)) || 0 }));
     return res.json({ success: true, data: data.map((post) => toPublicPost(post, userId)) });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.aiSearchPosts = async (req, res, next) => {
+  try {
+    const viewerId = String(req.user?.id || req.user?.userId || "").trim();
+    const description = cleanText(req.body?.description);
+    const limit = Math.min(20, Math.max(1, Number(req.body?.limit) || 8));
+    const status = req.body?.status ? normalizeStatus(req.body.status) : "ACTIVE";
+    const maxPrice = Number(req.body?.maxPrice);
+
+    if (!description) {
+      return res.status(400).json({ success: false, message: "description is required" });
+    }
+
+    const query = {};
+    if (status) query.status = status;
+    if (Number.isFinite(maxPrice) && maxPrice > 0) {
+      query.price = { $lte: maxPrice };
+    }
+
+    let posts = await MarketplacePost.find(query).sort({ createdAt: -1 }).lean();
+    posts = posts.filter((post) => String(post.userId || "") !== viewerId);
+    posts = await ensureMarketplaceEmbeddings(posts);
+
+    const queryEmbeddingPayload = await createMarketplaceEmbeddingPayload(description);
+    const postIds = posts.map((post) => String(post.id || "")).filter(Boolean);
+    const counts = postIds.length
+      ? await MarketplaceRequest.aggregate([
+          { $match: { postId: { $in: postIds } } },
+          { $group: { _id: "$postId", count: { $sum: 1 } } },
+        ])
+      : [];
+    const countMap = new Map(counts.map((row) => [String(row._id), Number(row.count || 0)]));
+
+    const scored = posts
+      .map((post) => ({
+        ...post,
+        requestCount: countMap.get(String(post.id)) || 0,
+        similarityScore: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, post.descriptionEmbedding),
+      }))
+      .filter((post) => post.similarityScore > 0)
+      .sort((left, right) => right.similarityScore - left.similarityScore)
+      .slice(0, limit);
+
+    return res.json({
+      success: true,
+      data: scored.map((post) => ({
+        ...toPublicPost(post, viewerId),
+        similarityScore: post.similarityScore,
+      })),
+      meta: {
+        query: description,
+        totalCandidates: posts.length,
+      },
+    });
   } catch (err) {
     return next(err);
   }
@@ -699,9 +874,17 @@ exports.updatePost = async (req, res, next) => {
       return res.status(400).json({ success: false, message: sellerValidationError });
     }
 
+    const embeddingPayload = await createMarketplaceEmbeddingPayload(
+      buildMarketplaceSearchText({ title, description, sellerName })
+    );
+
     post.title = title;
     post.titleKey = title.toLowerCase();
     post.description = description;
+    post.searchText = embeddingPayload.searchText;
+    post.descriptionEmbedding = embeddingPayload.descriptionEmbedding;
+    post.embeddingModel = embeddingPayload.embeddingModel;
+    post.embeddingUpdatedAt = embeddingPayload.embeddingUpdatedAt;
     post.sellerName = sellerName;
     post.contactNumber = contactNumber;
     post.price = price;
