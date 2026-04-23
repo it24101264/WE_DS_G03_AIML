@@ -41,6 +41,21 @@ export const api = {
   register: (payload) => apiRequest("/auth/register", { method: "POST", body: payload }),
   login: (payload) => apiRequest("/auth/login", { method: "POST", body: payload }),
   me: () => apiRequest("/auth/me"),
+  updateProfile: (payload) => apiRequest("/auth/profile", { method: "PATCH", body: payload }),
+  changePassword: (payload) => apiRequest("/auth/password", { method: "PATCH", body: payload }),
+  deleteAccount: (payload) => apiRequest("/auth/me", { method: "DELETE", body: payload }),
+  adminUsers: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.q) search.set("q", params.q);
+    if (params.role) search.set("role", params.role);
+    if (params.status) search.set("status", params.status);
+    const qs = search.toString();
+    return apiRequest(`/auth/admin/users${qs ? `?${qs}` : ""}`);
+  },
+  adminSetUserBan: (id, payload) =>
+    apiRequest(`/auth/admin/users/${encodeURIComponent(id)}/ban`, { method: "PATCH", body: payload }),
+  adminDeleteUser: (id) =>
+    apiRequest(`/auth/admin/users/${encodeURIComponent(id)}`, { method: "DELETE" }),
   updatePushToken: (expoPushToken) => apiRequest("/auth/push-token", { method: "PATCH", body: { expoPushToken } }),
   studyAreaAdminBootstrap: () => apiRequest("/study-areas/admin/bootstrap"),
   studyAreas: () => apiRequest("/study-areas"),
