@@ -37,6 +37,13 @@ const MODULE_CATALOG = {
   },
 };
 
+function initialsFor(user) {
+  const name = String(user?.name || user?.email || "U").trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 function buildModules(role) {
   const roleHomeRoute =
     role === ROLES.BATCH_REP
@@ -114,6 +121,9 @@ export default function HomeScreen({ navigation, user, normalizedRole, onLogout 
       <View style={styles.bgOrbThree} />
 
       <View style={styles.topBar}>
+        <Pressable style={styles.profileBtn} onPress={() => navigation.navigate("UserProfile")}>
+          <Text style={styles.profileBtnText}>{initialsFor(user)}</Text>
+        </Pressable>
         <Pressable style={styles.logoutBtn} onPress={onLogout}>
           <Text style={styles.logoutBtnText}>Logout</Text>
         </Pressable>
@@ -207,7 +217,24 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: "row",
-    justifyContent: "flex-end",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  profileBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.6)",
+    ...theme.shadow.soft,
+  },
+  profileBtnText: {
+    color: theme.colors.primary,
+    fontWeight: "900",
+    fontSize: 16,
   },
   logoutBtn: {
     backgroundColor: "rgba(255,255,255,0.18)",

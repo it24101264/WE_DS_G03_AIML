@@ -11,6 +11,8 @@ import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import HomeScreen from "./src/screens/HomeScreen";
 import AiToolsScreen from "./src/screens/AiToolsScreen";
+import UserProfileScreen from "./src/screens/UserProfileScreen";
+import AdminDashboardScreen from "./src/screens/AdminDashboardScreen";
 import LostFoundCreateScreen from "./src/screens/LostFoundCreateScreen";
 import LostFoundDetailScreen from "./src/screens/LostFoundDetailScreen";
 import LostFoundAiSearchScreen from "./src/screens/LostFoundAiSearchScreen";
@@ -91,7 +93,7 @@ export default function App() {
             : normalizedRole === ROLES.CANTEEN_OWNER
               ? "CanteenOwner"
               : normalizedRole === ROLES.ADMIN
-                ? "StudyAreaAdmin"
+                ? "AdminDashboard"
                 : "Home"
         }
         screenOptions={{
@@ -126,6 +128,19 @@ export default function App() {
           </>
         ) : normalizedRole === ROLES.ADMIN ? (
           <>
+            <Stack.Screen name="AdminDashboard" options={{ headerShown: false }}>
+              {(props) => <AdminDashboardScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+            <Stack.Screen name="UserProfile" options={{ title: "Profile" }}>
+              {(props) => (
+                <UserProfileScreen
+                  {...props}
+                  user={user}
+                  onProfileChanged={loadMe}
+                  onLogout={logout}
+                />
+              )}
+            </Stack.Screen>
             <Stack.Screen name="StudyAreaAdmin" options={{ title: "Study Areas Admin" }}>
               {(props) => <StudyAreaAdminScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
@@ -151,6 +166,17 @@ export default function App() {
 
             <Stack.Screen name="AiTools" options={{ title: "AI Tools" }}>
               {(props) => <AiToolsScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="UserProfile" options={{ title: "Profile" }}>
+              {(props) => (
+                <UserProfileScreen
+                  {...props}
+                  user={user}
+                  onProfileChanged={loadMe}
+                  onLogout={logout}
+                />
+              )}
             </Stack.Screen>
 
             <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>

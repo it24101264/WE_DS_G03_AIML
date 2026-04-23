@@ -103,4 +103,8 @@ function validateLoginPayload(payload = {}) {
 module.exports = {
   validateRegisterPayload,
   validateLoginPayload,
+  validateEmail,
+  validateName,
+  validatePasswordForRegister,
+  cleanText,
 };
