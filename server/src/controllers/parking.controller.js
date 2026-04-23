@@ -5,6 +5,19 @@ const ParkingVehicleProfile = require("../models/ParkingVehicleProfile");
 const PARKING_AUTO_RELEASE_HOURS = 24;
 const PARKING_AUTO_RELEASE_MS = PARKING_AUTO_RELEASE_HOURS * 60 * 60 * 1000;
 
+function buildActiveSessionIdentityFilter(userId, username) {
+  const safeUserId = String(userId || "").trim();
+  const safeUsername = String(username || "").trim();
+  const filters = [];
+
+  if (safeUserId) filters.push({ userId: safeUserId });
+  if (safeUsername) filters.push({ username: safeUsername });
+
+  if (filters.length === 0) return null;
+  if (filters.length === 1) return filters[0];
+  return { $or: filters };
+}
+
 function normalizeVehiclePayload(body = {}) {
   const rawVehicleNumber = String(body.vehicleNumber || "").trim().toUpperCase();
   const compactVehicleNumber = rawVehicleNumber.replace(/[\s-]+/g, "");
@@ -134,9 +147,16 @@ exports.updateVehicleProfile = async (req, res) => {
 exports.deleteVehicleProfile = async (req, res) => {
   try {
     await releaseExpiredParkingSessions();
+    const safeUserId = String(req.user.id || "").trim();
+    const safeUsername = String(req.user.email || req.user.id || "").trim();
+    const identityFilter = buildActiveSessionIdentityFilter(safeUserId, safeUsername);
+
+    if (!identityFilter) {
+      return res.status(401).json({ success: false, message: "Authenticated user identity is required" });
+    }
 
     const activeSession = await ParkingSession.findOne({
-      userId: req.user.id,
+      ...identityFilter,
       vehicleProfileId: req.params.id,
       exitTime: null,
     }).lean();
@@ -179,11 +199,13 @@ exports.parkVehicle = async (req, res) => {
     await releaseExpiredParkingSessions();
 
     const { slotId, vehicleProfileId } = req.body || {};
+    const safeUserId = String(req.user.id || "").trim();
     const safeUsername = String(req.user.email || req.user.id || "").trim();
     const safeSlotId = String(slotId || "").trim();
     const safeVehicleProfileId = String(vehicleProfileId || "").trim();
+    const identityFilter = buildActiveSessionIdentityFilter(safeUserId, safeUsername);
 
-    if (!safeUsername) {
+    if (!identityFilter) {
       return res.status(401).json({ success: false, message: "Authenticated user identity is required" });
     }
 
@@ -192,7 +214,7 @@ exports.parkVehicle = async (req, res) => {
     }
 
     const existingActive = await ParkingSession.findOne({
-      userId: req.user.id,
+      ...identityFilter,
       exitTime: null,
     }).lean();
 
@@ -222,17 +244,30 @@ exports.parkVehicle = async (req, res) => {
       return res.status(400).json({ success: false, message: "Slot not available or not found" });
     }
 
-    await ParkingSession.create({
-      userId: req.user.id,
-      username: safeUsername,
-      slotId: safeSlotId,
-      vehicleProfileId: String(profile._id),
-      vehicleType: profile.vehicleType,
-      vehicleNumber: profile.vehicleNumber,
-      ownerPhone: profile.ownerPhone,
-      entryTime: new Date(),
-      exitTime: null,
-    });
+    try {
+      await ParkingSession.create({
+        userId: safeUserId || null,
+        username: safeUsername,
+        slotId: safeSlotId,
+        vehicleProfileId: String(profile._id),
+        vehicleType: profile.vehicleType,
+        vehicleNumber: profile.vehicleNumber,
+        ownerPhone: profile.ownerPhone,
+        entryTime: new Date(),
+        exitTime: null,
+      });
+    } catch (createErr) {
+      await ParkingSlot.updateOne({ slotId: safeSlotId, status: "occupied" }, { $set: { status: "available" } });
+
+      if (createErr?.code === 11000) {
+        return res.status(409).json({
+          success: false,
+          message: "You already have an active parking session. Leave first.",
+        });
+      }
+
+      throw createErr;
+    }
 
     return res.status(200).json({ success: true, message: "Vehicle parked successfully" });
   } catch (err) {
@@ -245,14 +280,21 @@ exports.leaveSlot = async (req, res) => {
     await releaseExpiredParkingSessions();
 
     const { slotId } = req.body || {};
+    const safeUserId = String(req.user.id || "").trim();
+    const safeUsername = String(req.user.email || req.user.id || "").trim();
     const safeSlotId = String(slotId || "").trim();
+    const identityFilter = buildActiveSessionIdentityFilter(safeUserId, safeUsername);
 
     if (!safeSlotId) {
       return res.status(400).json({ success: false, message: "slotId is required" });
     }
 
+    if (!identityFilter) {
+      return res.status(401).json({ success: false, message: "Authenticated user identity is required" });
+    }
+
     const session = await ParkingSession.findOne({
-      userId: req.user.id,
+      ...identityFilter,
       slotId: safeSlotId,
       exitTime: null,
     });
@@ -279,9 +321,16 @@ exports.getMySlot = async (req, res) => {
   try {
     await releaseExpiredParkingSessions();
 
+    const safeUserId = String(req.user.id || "").trim();
     const username = String(req.user.email || req.user.id || "").trim();
+    const identityFilter = buildActiveSessionIdentityFilter(safeUserId, username);
+
+    if (!identityFilter) {
+      return res.status(401).json({ success: false, message: "Authenticated user identity is required" });
+    }
+
     const activeSession = await ParkingSession.findOne({
-      $or: [{ userId: req.user.id }, { username }],
+      ...identityFilter,
       exitTime: null,
     }).lean();
     return res.status(200).json({
