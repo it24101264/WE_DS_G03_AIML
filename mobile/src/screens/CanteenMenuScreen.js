@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, FlatList, ActivityIndicator, Alert, TextInput, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { theme } from '../ui/theme';
 
 import { API_URLS } from '../config';
@@ -22,6 +23,34 @@ export default function StudentDashboard({ route, navigation, user, onLogout }) 
     // Cart States
     const [cart, setCart] = useState([]); // [{ food, quantity }]
     const [pickupTime, setPickupTime] = useState('');
+    const [showTimePicker, setShowTimePicker] = useState(false);
+    const [date, setDate] = useState(new Date());
+
+    const formatTime = (d) => {
+        let hours = d.getHours();
+        let minutes = d.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        return `${hours}:${minutes} ${ampm}`;
+    };
+
+    const onTimeChange = (event, selectedDate) => {
+        if (Platform.OS === 'android') {
+            setShowTimePicker(false);
+        }
+        if (selectedDate) {
+            setDate(selectedDate);
+            setPickupTime(formatTime(selectedDate));
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'cart' && Platform.OS === 'ios' && !pickupTime) {
+            setPickupTime(formatTime(date));
+        }
+    }, [activeTab]);
 
     // Orders States
     const [orders, setOrders] = useState([]);
@@ -78,6 +107,10 @@ export default function StudentDashboard({ route, navigation, user, onLogout }) 
             return [...prev, { food, quantity: 1 }];
         });
         Alert.alert('Added', `${food.Name} added to cart!`);
+    };
+
+    const removeFromCart = (foodId) => {
+        setCart(prev => prev.filter(item => item.food.FoodID !== foodId));
     };
 
     const checkout = async () => {
@@ -153,7 +186,7 @@ export default function StudentDashboard({ route, navigation, user, onLogout }) 
 
             {selectedCanteen && (
                 <>
-                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Menu Items</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 10 }]}>Menu Items</Text>
                     {loadingMenu ? <ActivityIndicator color={theme.colors.primary} /> :
                         <FlatList data={foods} showsVerticalScrollIndicator={false} keyExtractor={f => f.FoodID?.toString() || Math.random().toString()} renderItem={({ item }) => (
                             <View style={styles.foodItem}>
@@ -188,14 +221,50 @@ export default function StudentDashboard({ route, navigation, user, onLogout }) 
                     <>
                         <FlatList data={cart} showsVerticalScrollIndicator={false} keyExtractor={c => c.food.FoodID?.toString() || Math.random().toString()} renderItem={({ item }) => (
                             <View style={styles.foodItem}>
-                                <Text style={styles.foodTitle}>{item.food.Name} (x{item.quantity})</Text>
-                                <Text style={styles.foodPrice}>Rs {item.food.Price * item.quantity}</Text>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.foodTitle}>{item.food.Name} (x{item.quantity})</Text>
+                                    <Text style={styles.foodPrice}>Rs {item.food.Price * item.quantity}</Text>
+                                </View>
+                                <TouchableOpacity style={styles.deleteBtn} onPress={() => removeFromCart(item.food.FoodID)}>
+                                    <Ionicons name="trash-outline" size={22} color={theme.colors.danger} />
+                                </TouchableOpacity>
                             </View>
                         )} />
 
                         <View style={styles.checkoutBox}>
                             <Text style={styles.totalText}>Total: Rs {total}</Text>
-                            <TextInput style={styles.input} placeholderTextColor={theme.colors.textMuted} placeholder="Pickup Time (e.g. 12:30 PM)" value={pickupTime} onChangeText={setPickupTime} />
+                            
+                            <View style={styles.timePickerRow}>
+                                <Text style={styles.timePickerLabel}>Pickup Time:</Text>
+                                {Platform.OS === 'ios' ? (
+                                    <DateTimePicker
+                                        value={date}
+                                        mode="time"
+                                        display="default"
+                                        onChange={onTimeChange}
+                                        style={{ width: 100 }}
+                                    />
+                                ) : (
+                                    <TouchableOpacity 
+                                        style={styles.timePickerButton} 
+                                        onPress={() => setShowTimePicker(true)}
+                                    >
+                                        <Text style={{ color: pickupTime ? theme.colors.text : theme.colors.textMuted, fontSize: 15 }}>
+                                            {pickupTime || "Select Time"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {Platform.OS === 'android' && showTimePicker && (
+                                <DateTimePicker
+                                    value={date}
+                                    mode="time"
+                                    display="default"
+                                    onChange={onTimeChange}
+                                />
+                            )}
+
                             <TouchableOpacity style={styles.checkoutBtn} onPress={checkout}>
                                 <Text style={styles.checkoutBtnText}>Checkout Order</Text>
                             </TouchableOpacity>
@@ -258,11 +327,11 @@ const styles = StyleSheet.create({
     navText: { color: theme.colors.textMuted, fontSize: 12, marginTop: 4, fontWeight: '700' },
     navTextActive: { color: theme.colors.primary, fontWeight: '800' },
     content: { flex: 1 },
-    sectionContainer: { flex: 1, padding: 20, paddingBottom: 0 },
-    pickerContainer: { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 10, justifyContent: 'center', paddingVertical: Platform.OS === 'ios' ? 5 : 0 },
+    sectionContainer: { flex: 1, padding: 15, paddingBottom: 0 },
+    pickerContainer: { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 5, justifyContent: 'center', paddingVertical: Platform.OS === 'ios' ? 2 : 0 },
     picker: { width: '100%', color: theme.colors.text, height: Platform.OS === 'android' ? 50 : undefined },
     pickerItem: { color: theme.colors.text, fontSize: 16 },
-    sectionTitle: { fontSize: 20, fontWeight: '900', color: theme.colors.text, marginBottom: 15 },
+    sectionTitle: { fontSize: 20, fontWeight: '900', color: theme.colors.text, marginBottom: 10 },
     foodItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: theme.colors.surface, padding: 15, borderRadius: theme.radius.lg, marginVertical: 6, ...theme.shadow.soft, borderWidth: 1, borderColor: theme.colors.border },
     listImage: { width: 50, height: 50, borderRadius: theme.radius.sm, backgroundColor: theme.colors.surfaceAlt },
     iconPlaceholder: { width: 50, height: 50, borderRadius: theme.radius.sm, backgroundColor: theme.colors.surfaceAlt, justifyContent: 'center', alignItems: 'center' },
@@ -270,9 +339,13 @@ const styles = StyleSheet.create({
     foodPrice: { fontSize: 14, color: theme.colors.accent, marginTop: 4, fontWeight: '800' },
     addBtn: { backgroundColor: theme.colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: theme.radius.pill },
     addBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
+    deleteBtn: { padding: 8, backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.pill, borderWidth: 1, borderColor: theme.colors.border },
     checkoutBox: { marginTop: 20, padding: 20, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, ...theme.shadow.soft, borderWidth: 1, borderColor: theme.colors.border },
     totalText: { fontSize: 18, fontWeight: '900', marginBottom: 15, color: theme.colors.text },
     input: { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.sm, padding: 14, marginBottom: 15, borderWidth: 1, borderColor: theme.colors.border, color: theme.colors.text, fontSize: 15 },
+    timePickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.sm, padding: 14, marginBottom: 15, borderWidth: 1, borderColor: theme.colors.border },
+    timePickerLabel: { color: theme.colors.text, fontSize: 15, fontWeight: '600' },
+    timePickerButton: { flex: 1, alignItems: 'flex-end' },
     checkoutBtn: { backgroundColor: theme.colors.primary, padding: 16, borderRadius: theme.radius.sm, alignItems: 'center' },
     checkoutBtnText: { color: '#FFF', fontWeight: '800', fontSize: 16 },
     orderCard: { backgroundColor: theme.colors.warningBg, padding: 16, borderRadius: theme.radius.lg, marginVertical: 8, borderLeftWidth: 6, borderLeftColor: theme.colors.warningText, ...theme.shadow.soft, borderWidth: 1, borderColor: theme.colors.border },

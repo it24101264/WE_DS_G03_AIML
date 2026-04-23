@@ -53,6 +53,9 @@ export default function FoodManagement({ route, navigation, user, onLogout, cant
         if (!name || !price) {
             Alert.alert('Error', 'Please fill all fields');
             return;
+        } else if (price <= 0) {
+            Alert.alert('Error', 'Price must be greater than 0');
+            return;
         }
 
         try {
@@ -192,14 +195,14 @@ export default function FoodManagement({ route, navigation, user, onLogout, cant
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.bg },
-    formContainer: { padding: 20, backgroundColor: theme.colors.surface, ...theme.shadow.soft, marginBottom: 15, borderRadius: theme.radius.lg, marginHorizontal: 15, marginTop: 15, borderWidth: 1, borderColor: theme.colors.border },
-    sectionTitle: { fontSize: 18, fontWeight: '900', color: theme.colors.text, marginBottom: 15 },
-    input: { backgroundColor: theme.colors.surfaceAlt, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.sm, padding: 14, marginBottom: 12, fontSize: 15, color: theme.colors.text },
-    addBtn: { backgroundColor: theme.colors.primary, padding: 15, borderRadius: theme.radius.sm, alignItems: 'center', marginTop: 5 },
+    formContainer: { padding: 15, backgroundColor: theme.colors.surface, ...theme.shadow.soft, marginBottom: 10, borderRadius: theme.radius.lg, marginHorizontal: 15, marginTop: 10, borderWidth: 1, borderColor: theme.colors.border },
+    sectionTitle: { fontSize: 18, fontWeight: '900', color: theme.colors.text, marginBottom: 10 },
+    input: { backgroundColor: theme.colors.surfaceAlt, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.sm, padding: 10, marginBottom: 10, fontSize: 15, color: theme.colors.text },
+    addBtn: { backgroundColor: theme.colors.primary, padding: 12, borderRadius: theme.radius.sm, alignItems: 'center', marginTop: 0 },
     addBtnText: { color: '#FFF', fontWeight: '800', fontSize: 15 },
-    imageUploadBtn: { backgroundColor: theme.colors.surfaceAlt, padding: 14, borderRadius: theme.radius.sm, alignItems: 'center', marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border, borderStyle: 'dashed' },
+    imageUploadBtn: { backgroundColor: theme.colors.surfaceAlt, padding: 10, borderRadius: theme.radius.sm, alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: theme.colors.border, borderStyle: 'dashed' },
     imageUploadText: { color: theme.colors.primaryDeep, fontWeight: '800' },
-    previewImage: { width: '100%', height: 160, borderRadius: theme.radius.md, marginBottom: 10, resizeMode: 'cover' },
+    previewImage: { width: '100%', height: 100, borderRadius: theme.radius.md, marginBottom: 10, resizeMode: 'cover' },
     listContainer: { flex: 1, paddingHorizontal: 15 },
     listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, marginVertical: 6, ...theme.shadow.soft, borderWidth: 1, borderColor: theme.colors.border },
     listImage: { width: 56, height: 56, borderRadius: theme.radius.sm, backgroundColor: theme.colors.surfaceAlt },
