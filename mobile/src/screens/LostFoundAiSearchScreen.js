@@ -28,6 +28,22 @@ function ScorePill({ score }) {
   );
 }
 
+function MatchReasonChips({ reasons }) {
+  const visibleReasons = Array.isArray(reasons) ? reasons.filter(Boolean).slice(0, 3) : [];
+  if (!visibleReasons.length) return null;
+
+  return (
+    <View style={styles.reasonWrap}>
+      {visibleReasons.map((reason) => (
+        <View key={reason} style={styles.reasonChip}>
+          <MaterialCommunityIcons name="check-decagram-outline" size={13} color={theme.colors.primaryDeep} />
+          <Text style={styles.reasonChipText}>{reason}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function LostFoundAiSearchScreen({ navigation }) {
   const [mode, setMode] = useState("description");
   const [description, setDescription] = useState("");
@@ -209,6 +225,7 @@ export default function LostFoundAiSearchScreen({ navigation }) {
                 <Text style={styles.viewBtnText}>Open Post</Text>
               </Pressable>
             </View>
+            <MatchReasonChips reasons={item.matchReasons} />
             <LostFoundCard item={item} onPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })} />
           </View>
         ))}
@@ -376,6 +393,30 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   scorePillText: { color: theme.colors.primaryDeep, fontWeight: "800", fontSize: 12 },
+  reasonWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 8,
+  },
+  reasonChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f7fbff",
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: "#d7e2f3",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    maxWidth: "100%",
+  },
+  reasonChipText: {
+    color: theme.colors.primaryDeep,
+    fontWeight: "700",
+    fontSize: 11,
+    flexShrink: 1,
+  },
   viewBtn: {
     borderRadius: theme.radius.pill,
     borderWidth: 1,

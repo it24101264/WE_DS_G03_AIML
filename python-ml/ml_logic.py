@@ -28,6 +28,10 @@ def _clean_text(value: str) -> str:
     return " ".join(str(value or "").strip().split())
 
 
+def clean_text(value: str) -> str:
+    return _clean_text(value)
+
+
 def _get_embed_model():
     global _EMBED_MODEL
     if SentenceTransformer is None:
@@ -39,6 +43,9 @@ def _get_embed_model():
 
 def embed_texts(texts: List[str]) -> np.ndarray:
     cleaned_texts = [_clean_text(text) for text in texts]
+    if not cleaned_texts:
+        return np.empty((0, 0))
+
     model = _get_embed_model()
     if model is not None:
         try:
@@ -47,7 +54,10 @@ def embed_texts(texts: List[str]) -> np.ndarray:
             pass
 
     vectorizer = TfidfVectorizer(stop_words="english", max_features=2000, ngram_range=(1, 2))
-    vectors = vectorizer.fit_transform(cleaned_texts).toarray()
+    try:
+        vectors = vectorizer.fit_transform(cleaned_texts).toarray()
+    except ValueError:
+        return np.zeros((len(cleaned_texts), 1))
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
     return vectors / norms
@@ -67,6 +77,40 @@ def _pick_cluster_count(item_count: int, max_clusters: int) -> int:
 def _tokenize(text: str) -> List[str]:
     tokens = [t.lower() for t in _WORD_RE.findall(text)]
     return [t for t in tokens if t not in _STOPWORDS and len(t) > 2]
+
+
+def tokenize(text: str) -> List[str]:
+    return _tokenize(text)
+
+
+def clamp01(value: float) -> float:
+    if not math.isfinite(value):
+        return 0.0
+    return max(0.0, min(1.0, float(value)))
+
+
+def cosine_similarity(left, right) -> float:
+    left_vec = np.asarray(left, dtype=float)
+    right_vec = np.asarray(right, dtype=float)
+    if left_vec.size == 0 or right_vec.size == 0 or left_vec.shape != right_vec.shape:
+        return 0.0
+
+    left_norm = float(np.linalg.norm(left_vec))
+    right_norm = float(np.linalg.norm(right_vec))
+    if left_norm == 0.0 or right_norm == 0.0:
+        return 0.0
+    return clamp01(float(np.dot(left_vec, right_vec) / (left_norm * right_norm)))
+
+
+def token_overlap_score(query_text: str, candidate_text: str) -> Dict[str, Any]:
+    query_tokens = set(_tokenize(query_text))
+    candidate_tokens = set(_tokenize(candidate_text))
+    if not query_tokens or not candidate_tokens:
+        return {"score": 0.0, "tokens": []}
+
+    shared = sorted(query_tokens.intersection(candidate_tokens))
+    score = len(shared) / max(1, min(len(query_tokens), len(candidate_tokens)))
+    return {"score": clamp01(score), "tokens": shared}
 
 
 def _label_cluster(texts: List[str]) -> Dict[str, Any]:

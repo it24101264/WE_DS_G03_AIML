@@ -1,7 +1,7 @@
 const LostFoundItem = require("../models/LostFoundItem");
 const User = require("../models/user");
 const { makeId } = require("../utils/id");
-const { embedTextsInPython } = require("../services/ml/pythonClient");
+const { embedLostFoundTextsInPython, rankLostFoundInPython } = require("../services/ml/pythonClient");
 
 const {
   LOCATION_VALUES,
@@ -66,6 +66,17 @@ function buildSearchText({ title, description, category, location, type }) {
   return [title, description, category, location, type].map(cleanText).filter(Boolean).join(" ");
 }
 
+function toLostFoundRankCandidate(item) {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description || "",
+    category: item.category || "",
+    location: item.location || "",
+    type: item.type || "",
+  };
+}
+
 async function createEmbeddingPayload(searchText) {
   const safeSearchText = cleanText(searchText);
   if (!safeSearchText) {
@@ -78,7 +89,7 @@ async function createEmbeddingPayload(searchText) {
   }
 
   try {
-    const resp = await embedTextsInPython([safeSearchText]);
+    const resp = await embedLostFoundTextsInPython([safeSearchText]);
     const embedding = Array.isArray(resp?.embeddings?.[0]) ? resp.embeddings[0].map((value) => Number(value) || 0) : [];
     return {
       searchText: safeSearchText,
@@ -131,7 +142,7 @@ async function ensureEmbeddings(items = []) {
         type: item.type,
       })
     );
-    const resp = await embedTextsInPython(texts);
+    const resp = await embedLostFoundTextsInPython(texts);
     const embeddings = Array.isArray(resp?.embeddings) ? resp.embeddings : [];
 
     await Promise.all(
@@ -543,24 +554,61 @@ exports.aiSearchItems = async (req, res, next) => {
     let candidates = await LostFoundItem.find(query).sort({ createdAt: -1 }).lean();
     candidates = await ensureEmbeddings(candidates);
 
-    const queryEmbeddingPayload = await createEmbeddingPayload(
-      buildSearchText({
-        title: sourceItem?.title || "",
-        description,
-        category: safeCategory || sourceItem?.category || "",
-        location: safeLocation || sourceItem?.location || "",
-        type: sourceItem?.type || "",
-      })
-    );
+    const queryText = buildSearchText({
+      title: sourceItem?.title || "",
+      description,
+      category: safeCategory || sourceItem?.category || "",
+      location: safeLocation || sourceItem?.location || "",
+      type: sourceItem?.type || "",
+    });
+    const fallbackScore = async () => {
+      const queryEmbeddingPayload = await createEmbeddingPayload(queryText);
+      return candidates
+        .map((item) => ({
+          ...toPublicItem(item, viewerId),
+          similarityScore: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, item.descriptionEmbedding),
+          matchReasons: [],
+          matchBreakdown: {
+            semantic: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, item.descriptionEmbedding),
+            keyword: 0,
+            metadata: 0,
+          },
+        }))
+        .filter((item) => item.similarityScore > 0)
+        .sort((left, right) => right.similarityScore - left.similarityScore)
+        .slice(0, limit);
+    };
 
-    const scored = candidates
-      .map((item) => ({
-        ...toPublicItem(item, viewerId),
-        similarityScore: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, item.descriptionEmbedding),
-      }))
-      .filter((item) => item.similarityScore > 0)
-      .sort((left, right) => right.similarityScore - left.similarityScore)
-      .slice(0, limit);
+    let scored = [];
+    try {
+      const rankResp = await rankLostFoundInPython({
+        queryText,
+        queryMetadata: {
+          category: safeCategory || sourceItem?.category || "",
+          location: safeLocation || sourceItem?.location || "",
+          sourceType: sourceItem?.type || "",
+          targetType: targetType || "",
+        },
+        candidates: candidates.map(toLostFoundRankCandidate),
+        limit,
+      });
+      const candidateMap = new Map(candidates.map((item) => [String(item.id), item]));
+      scored = (Array.isArray(rankResp?.results) ? rankResp.results : [])
+        .map((ranked) => {
+          const item = candidateMap.get(String(ranked.id));
+          if (!item) return null;
+          return {
+            ...toPublicItem(item, viewerId),
+            similarityScore: Number(ranked.similarityScore) || 0,
+            matchReasons: Array.isArray(ranked.matchReasons) ? ranked.matchReasons : [],
+            matchBreakdown: ranked.matchBreakdown || {},
+          };
+        })
+        .filter(Boolean);
+    } catch (err) {
+      console.error("LostFound rank error:", err.message);
+      scored = await fallbackScore();
+    }
 
     return res.json({
       success: true,
