@@ -10,6 +10,7 @@ import { theme } from "./src/ui/theme";
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import AiToolsScreen from "./src/screens/AiToolsScreen";
 import LostFoundCreateScreen from "./src/screens/LostFoundCreateScreen";
 import LostFoundDetailScreen from "./src/screens/LostFoundDetailScreen";
 import LostFoundAiSearchScreen from "./src/screens/LostFoundAiSearchScreen";
@@ -146,6 +147,10 @@ export default function App() {
                   onLogout={logout}
                 />
               )}
+            </Stack.Screen>
+
+            <Stack.Screen name="AiTools" options={{ title: "AI Tools" }}>
+              {(props) => <AiToolsScreen {...props} user={user} />}
             </Stack.Screen>
 
             <Stack.Screen name="CanteenOwner" options={{ headerShown: false }}>

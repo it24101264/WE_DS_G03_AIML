@@ -4,7 +4,7 @@ const MarketplaceCart = require("../models/MarketplaceCart");
 const MarketplaceFavorite = require("../models/MarketplaceFavorite");
 const User = require("../models/user");
 const { makeId } = require("../utils/id");
-const { embedTextsInPython } = require("../services/ml/pythonClient");
+const { embedMarketplaceTextsInPython, rankMarketplaceInPython } = require("../services/ml/pythonClient");
 
 const { STATUS_VALUES } = require("../models/MarketplacePost");
 const { REQUEST_STATUS_VALUES } = require("../models/MarketplaceRequest");
@@ -33,6 +33,16 @@ function buildMarketplaceSearchText({ title, description, sellerName }) {
   return [title, description, sellerName].map(cleanText).filter(Boolean).join(" ");
 }
 
+function toMarketplaceRankCandidate(post) {
+  return {
+    id: post.id,
+    title: post.title,
+    description: post.description || "",
+    sellerName: post.sellerName || post.userName || "",
+    price: Number(post.price || 0),
+  };
+}
+
 async function createMarketplaceEmbeddingPayload(searchText) {
   const safeSearchText = cleanText(searchText);
   if (!safeSearchText) {
@@ -45,7 +55,7 @@ async function createMarketplaceEmbeddingPayload(searchText) {
   }
 
   try {
-    const resp = await embedTextsInPython([safeSearchText]);
+    const resp = await embedMarketplaceTextsInPython([safeSearchText]);
     const embedding = Array.isArray(resp?.embeddings?.[0]) ? resp.embeddings[0].map((value) => Number(value) || 0) : [];
     return {
       searchText: safeSearchText,
@@ -97,7 +107,7 @@ async function ensureMarketplaceEmbeddings(posts = []) {
         sellerName: post.sellerName || post.userName,
       })
     );
-    const resp = await embedTextsInPython(texts);
+    const resp = await embedMarketplaceTextsInPython(texts);
     const embeddings = Array.isArray(resp?.embeddings) ? resp.embeddings : [];
 
     await Promise.all(
@@ -698,7 +708,6 @@ exports.aiSearchPosts = async (req, res, next) => {
     posts = posts.filter((post) => String(post.userId || "") !== viewerId);
     posts = await ensureMarketplaceEmbeddings(posts);
 
-    const queryEmbeddingPayload = await createMarketplaceEmbeddingPayload(description);
     const postIds = posts.map((post) => String(post.id || "")).filter(Boolean);
     const counts = postIds.length
       ? await MarketplaceRequest.aggregate([
@@ -707,22 +716,61 @@ exports.aiSearchPosts = async (req, res, next) => {
         ])
       : [];
     const countMap = new Map(counts.map((row) => [String(row._id), Number(row.count || 0)]));
+    posts = posts.map((post) => ({
+      ...post,
+      requestCount: countMap.get(String(post.id)) || 0,
+    }));
 
-    const scored = posts
-      .map((post) => ({
-        ...post,
-        requestCount: countMap.get(String(post.id)) || 0,
-        similarityScore: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, post.descriptionEmbedding),
-      }))
-      .filter((post) => post.similarityScore > 0)
-      .sort((left, right) => right.similarityScore - left.similarityScore)
-      .slice(0, limit);
+    const fallbackScore = async () => {
+      const queryEmbeddingPayload = await createMarketplaceEmbeddingPayload(description);
+      return posts
+        .map((post) => ({
+          ...post,
+          similarityScore: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, post.descriptionEmbedding),
+          matchReasons: [],
+          matchBreakdown: {
+            semantic: cosineSimilarity(queryEmbeddingPayload.descriptionEmbedding, post.descriptionEmbedding),
+            keyword: 0,
+            price: 0,
+          },
+        }))
+        .filter((post) => post.similarityScore > 0)
+        .sort((left, right) => right.similarityScore - left.similarityScore)
+        .slice(0, limit);
+    };
+
+    let scored = [];
+    try {
+      const rankResp = await rankMarketplaceInPython({
+        queryText: description,
+        candidates: posts.map(toMarketplaceRankCandidate),
+        limit,
+      });
+      const postMap = new Map(posts.map((post) => [String(post.id), post]));
+      scored = (Array.isArray(rankResp?.results) ? rankResp.results : [])
+        .map((ranked) => {
+          const post = postMap.get(String(ranked.id));
+          if (!post) return null;
+          return {
+            ...post,
+            similarityScore: Number(ranked.similarityScore) || 0,
+            matchReasons: Array.isArray(ranked.matchReasons) ? ranked.matchReasons : [],
+            matchBreakdown: ranked.matchBreakdown || {},
+          };
+        })
+        .filter(Boolean);
+    } catch (err) {
+      console.error("Marketplace rank error:", err.message);
+      scored = await fallbackScore();
+    }
 
     return res.json({
       success: true,
       data: scored.map((post) => ({
         ...toPublicPost(post, viewerId),
         similarityScore: post.similarityScore,
+        matchReasons: post.matchReasons || [],
+        matchBreakdown: post.matchBreakdown || {},
       })),
       meta: {
         query: description,
