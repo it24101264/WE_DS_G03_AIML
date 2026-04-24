@@ -6,7 +6,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed:parking": "node seedParkingSlots.js",
-    "seed:kuppi-april": "node seedKuppiAprilRequests.js"
+    "seed:kuppi-april": "node seedKuppiAprilRequests.js",
+    "seed:lostfound": "node seedLostFoundSamples.js"
   },
   "keywords": [],
   "author": "",

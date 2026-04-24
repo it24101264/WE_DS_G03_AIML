@@ -356,15 +356,15 @@ exports.syncPresence = async (req, res) => {
 };
 
 exports.getAdminBootstrap = async (_req, res) => {
-  const email = process.env.STUDY_AREA_ADMIN_EMAIL || "studyadmin@sliit.local";
-  const password = process.env.STUDY_AREA_ADMIN_PASSWORD || "StudyAreaAdmin@2026";
+  const email = process.env.DEFAULT_ADMIN_EMAIL || process.env.STUDY_AREA_ADMIN_EMAIL || "admin@sliit.local";
+  const password = process.env.DEFAULT_ADMIN_PASSWORD || process.env.STUDY_AREA_ADMIN_PASSWORD || "Admin@2026";
 
   return res.status(200).json({
     success: true,
     data: {
       email,
       password,
-      note: "This is the seeded study area administrator account.",
+      note: "This is the seeded default administrator account.",
     },
   });
 };

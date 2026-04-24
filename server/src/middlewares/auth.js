@@ -1,11 +1,12 @@
 const jwt = require("jsonwebtoken");
 const { normalizeRole, ROLES } = require("../constants/roles");
+const User = require("../models/user");
 
 function decodeToken(token) {
   return jwt.verify(token, process.env.JWT_SECRET);
 }
 
-function authRequired(req, res, next) {
+async function authRequired(req, res, next) {
   try {
     // DEV BYPASS
     if (process.env.DEV_BYPASS_AUTH === "true") {
@@ -23,6 +24,10 @@ function authRequired(req, res, next) {
 
     const token = header.split(" ")[1];
     req.user = decodeToken(token);
+    const user = await User.findOne({ id: req.user.id }).select("isBanned").lean();
+    if (user?.isBanned) {
+      return res.status(403).json({ success: false, message: "This account has been banned" });
+    }
     return next();
   } catch (err) {
     return res.status(401).json({ success: false, message: "Invalid token" });

@@ -6,6 +6,7 @@ import { theme } from "../ui/theme";
 
 export const MARKETPLACE_STATUS = {
   ACTIVE: "ACTIVE",
+  RESERVED: "RESERVED",
   SOLD: "SOLD",
 };
 
@@ -33,9 +34,10 @@ export function formatMarketplaceTime(value) {
 
 export function SellerStatusBadge({ status }) {
   const safeStatus = String(status || MARKETPLACE_STATUS.ACTIVE).toUpperCase();
-  const palette =
-    safeStatus === MARKETPLACE_STATUS.SOLD
-      ? { bg: theme.colors.successBg, text: theme.colors.successText }
+  const palette = safeStatus === MARKETPLACE_STATUS.SOLD
+    ? { bg: theme.colors.successBg, text: theme.colors.successText }
+    : safeStatus === MARKETPLACE_STATUS.RESERVED
+      ? { bg: theme.colors.warningBg, text: theme.colors.warningText }
       : { bg: theme.colors.infoBg, text: theme.colors.infoText };
 
   return (

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { api } from "../api";
@@ -85,6 +85,17 @@ export default function LostFoundScreen({ navigation }) {
             <Text style={styles.quickSubtitle}>{mineCount} post(s)</Text>
           </Pressable>
         </View>
+
+        <Pressable style={styles.aiSearchCard} onPress={() => navigation.navigate("LostFoundAiSearch")}>
+          <View style={styles.aiSearchIcon}>
+            <MaterialCommunityIcons name="creation-outline" size={22} color="#ffffff" />
+          </View>
+          <View style={styles.aiSearchCopy}>
+            <Text style={styles.aiSearchTitle}>AI Search</Text>
+            <Text style={styles.aiSearchSubtitle}>Find similar posts using your own description or an existing post.</Text>
+          </View>
+          <MaterialCommunityIcons name="arrow-right" size={20} color="#ffffff" />
+        </Pressable>
       </View>
 
       <View style={styles.searchCard}>
@@ -216,15 +227,23 @@ export default function LostFoundScreen({ navigation }) {
             <Text style={styles.cardTitle}>Posts</Text>
           </View>
         </View>
-        {items.length === 0 ? <Text style={styles.muted}>No items found.</Text> : null}
-        {items.map((item) => (
-          <LostFoundCard
-            key={item.id}
-            item={item}
-            onPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })}
-            onItemFoundPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })}
-          />
-        ))}
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Loading lost and found items...</Text>
+          </View>
+        ) : null}
+        {!loading && items.length === 0 ? <Text style={styles.muted}>No items found.</Text> : null}
+        {!loading
+          ? items.map((item) => (
+              <LostFoundCard
+                key={item.id}
+                item={item}
+                onPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })}
+                onItemFoundPress={() => navigation.navigate("LostFoundDetail", { itemId: item.id })}
+              />
+            ))
+          : null}
       </View>
     </ScrollView>
   );
@@ -295,6 +314,28 @@ const styles = StyleSheet.create({
   },
   quickTitle: { color: "#ffffff", fontWeight: "800", fontSize: 16 },
   quickSubtitle: { color: "#dce7ff", fontWeight: "600" },
+  aiSearchCard: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderRadius: 22,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+  },
+  aiSearchIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  aiSearchCopy: { flex: 1, gap: 2 },
+  aiSearchTitle: { color: "#ffffff", fontWeight: "900", fontSize: 16 },
+  aiSearchSubtitle: { color: "#dce7ff", lineHeight: 19 },
   searchCard: {
     backgroundColor: theme.colors.surface,
     borderRadius: 24,
@@ -405,6 +446,16 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: { color: theme.colors.primary, fontWeight: "800" },
   btnDisabled: { opacity: 0.7 },
+  loadingState: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 28,
+    gap: 10,
+  },
+  loadingText: {
+    color: theme.colors.textMuted,
+    fontWeight: "700",
+  },
   muted: { color: theme.colors.textMuted, paddingTop: 4 },
   error: { color: theme.colors.danger, fontSize: 13 },
 });

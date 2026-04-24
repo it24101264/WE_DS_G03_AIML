@@ -2,19 +2,26 @@ import React, { useEffect, useState } from "react";
 import { NavigationContainer, DefaultTheme } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { api } from "./src/api";
 import { theme } from "./src/ui/theme";
 
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import AiToolsScreen from "./src/screens/AiToolsScreen";
+import UserProfileScreen from "./src/screens/UserProfileScreen";
+import AdminDashboardScreen from "./src/screens/AdminDashboardScreen";
 import LostFoundCreateScreen from "./src/screens/LostFoundCreateScreen";
 import LostFoundDetailScreen from "./src/screens/LostFoundDetailScreen";
+import LostFoundAiSearchScreen from "./src/screens/LostFoundAiSearchScreen";
 import LostFoundMyPostsScreen from "./src/screens/LostFoundMyPostsScreen";
 import LostFoundScreen from "./src/screens/LostFoundScreen";
 import MarketplaceBuyerScreen from "./src/screens/MarketplaceBuyerScreen";
 import MarketplaceBuyerDetailScreen from "./src/screens/MarketplaceBuyerDetailScreen";
 import MarketplaceBuyerRequestsScreen from "./src/screens/MarketplaceBuyerRequestsScreen";
+import MarketplaceBuyerCartScreen from "./src/screens/MarketplaceBuyerCartScreen";
 import MarketplaceChoiceScreen from "./src/screens/MarketplaceChoiceScreen";
 import MarketplaceSellerDetailScreen from "./src/screens/MarketplaceSellerDetailScreen";
 import MarketplaceSellerFormScreen from "./src/screens/MarketplaceSellerFormScreen";
@@ -29,8 +36,12 @@ import { normalizeRole, ROLES } from "./src/constants/roles";
 import StudyAreasScreen from "./src/screens/StudyAreasScreen";
 import StudyAreaAdminScreen from "./src/screens/StudyAreaAdminScreen";
 import StudyAreaDetailScreen from "./src/screens/StudyAreaDetailScreen";
+// ── Payment screens ───────────────────────────────────────────────────────────
+import PaymentScreen from "./src/screens/PaymentScreen";
+import PaymentSuccessScreen from "./src/screens/PaymentSuccessScreen";
 
 const Stack = createNativeStackNavigator();
+
 
 const navTheme = {
   ...DefaultTheme,
@@ -65,6 +76,7 @@ export default function App() {
     loadMe();
   }, []);
 
+
   async function logout() {
     await AsyncStorage.removeItem("token");
     setUser(null);
@@ -81,7 +93,7 @@ export default function App() {
             : normalizedRole === ROLES.CANTEEN_OWNER
               ? "CanteenOwner"
               : normalizedRole === ROLES.ADMIN
-                ? "StudyAreaAdmin"
+                ? "AdminDashboard"
                 : "Home"
         }
         screenOptions={{
@@ -116,6 +128,19 @@ export default function App() {
           </>
         ) : normalizedRole === ROLES.ADMIN ? (
           <>
+            <Stack.Screen name="AdminDashboard" options={{ headerShown: false }}>
+              {(props) => <AdminDashboardScreen {...props} user={user} onLogout={logout} />}
+            </Stack.Screen>
+            <Stack.Screen name="UserProfile" options={{ title: "Profile" }}>
+              {(props) => (
+                <UserProfileScreen
+                  {...props}
+                  user={user}
+                  onProfileChanged={loadMe}
+                  onLogout={logout}
+                />
+              )}
+            </Stack.Screen>
             <Stack.Screen name="StudyAreaAdmin" options={{ title: "Study Areas Admin" }}>
               {(props) => <StudyAreaAdminScreen {...props} user={user} onLogout={logout} />}
             </Stack.Screen>
@@ -134,6 +159,21 @@ export default function App() {
                   {...props}
                   user={user}
                   normalizedRole={normalizedRole}
+                  onLogout={logout}
+                />
+              )}
+            </Stack.Screen>
+
+            <Stack.Screen name="AiTools" options={{ title: "AI Tools" }}>
+              {(props) => <AiToolsScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="UserProfile" options={{ title: "Profile" }}>
+              {(props) => (
+                <UserProfileScreen
+                  {...props}
+                  user={user}
+                  onProfileChanged={loadMe}
                   onLogout={logout}
                 />
               )}
@@ -183,6 +223,10 @@ export default function App() {
               {(props) => <LostFoundMyPostsScreen {...props} user={user} />}
             </Stack.Screen>
 
+            <Stack.Screen name="LostFoundAiSearch" options={{ title: "AI Search" }}>
+              {(props) => <LostFoundAiSearchScreen {...props} user={user} />}
+            </Stack.Screen>
+
             <Stack.Screen name="LostFoundDetail" options={{ title: "Post Details" }}>
               {(props) => <LostFoundDetailScreen {...props} user={user} />}
             </Stack.Screen>
@@ -217,6 +261,18 @@ export default function App() {
 
             <Stack.Screen name="MarketplaceBuyerRequests" options={{ title: "My Requests" }}>
               {(props) => <MarketplaceBuyerRequestsScreen {...props} user={user} />}
+            </Stack.Screen>
+            <Stack.Screen name="MarketplaceBuyerCart" options={{ title: "My Cart" }}>
+              {(props) => <MarketplaceBuyerCartScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            {/* ── Payment screens ─────────────────────────────────────────── */}
+            <Stack.Screen name="Payment" options={{ title: "Payment" }}>
+              {(props) => <PaymentScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="PaymentSuccess" options={{ headerShown: false }}>
+              {(props) => <PaymentSuccessScreen {...props} user={user} />}
             </Stack.Screen>
           </>
         )}

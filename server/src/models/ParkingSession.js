@@ -17,5 +17,16 @@ const parkingSessionSchema = new mongoose.Schema(
 
 parkingSessionSchema.index({ username: 1, exitTime: 1 });
 parkingSessionSchema.index({ userId: 1, exitTime: 1 });
+parkingSessionSchema.index(
+  { username: 1 },
+  { unique: true, partialFilterExpression: { exitTime: null } }
+);
+parkingSessionSchema.index(
+  { userId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { exitTime: null, userId: { $type: "string", $gt: "" } },
+  }
+);
 
 module.exports = mongoose.model("ParkingSession", parkingSessionSchema);

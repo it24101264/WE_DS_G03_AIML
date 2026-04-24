@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../api";
@@ -22,8 +22,12 @@ function RequestDecisionBadge({ status }) {
   );
 }
 
-function SellerRequestCard({ item, onOpenPost, onAccept, onDecline, deciding }) {
+function SellerRequestCard({ item, onOpenPost, onAccept, onDecline, onConfirmCod, deciding, confirmingCod }) {
   const finalized = String(item?.status || "PENDING").toUpperCase() !== "PENDING";
+  const isAccepted = String(item?.status || "PENDING").toUpperCase() === "ACCEPTED";
+  const showConfirmCod = isAccepted
+    && String(item?.paymentMethod || "") === "cod"
+    && String(item?.paymentStatus || "") === "cod_pending";
 
   return (
     <View style={styles.requestCard}>
@@ -46,6 +50,7 @@ function SellerRequestCard({ item, onOpenPost, onAccept, onDecline, deciding }) 
       <Text style={styles.metaLine}>
         Buyer email: {item?.buyerEmail || "Hidden until you accept this offer"}
       </Text>
+      <Text style={styles.metaLine}>Payment: {item?.paymentMethod || "-"} / {item?.paymentStatus || "unpaid"}</Text>
       <Text style={styles.metaLine}>Updated: {formatMarketplaceTime(item?.updatedAt || item?.createdAt)}</Text>
       {String(item?.status || "PENDING").toUpperCase() === "ACCEPTED" ? <Text style={styles.acceptedText}>Offer accepted. Both phone numbers are now shared with buyer and seller.</Text> : null}
       {String(item?.status || "PENDING").toUpperCase() === "PENDING" ? <Text style={styles.pendingText}>Buyer phone number stays hidden until you accept this offer.</Text> : null}
@@ -61,6 +66,11 @@ function SellerRequestCard({ item, onOpenPost, onAccept, onDecline, deciding }) 
         <Pressable style={[styles.declineBtn, (deciding || finalized) && styles.btnDisabled]} onPress={onDecline} disabled={deciding || finalized}>
           <Text style={styles.declineBtnText}>Decline</Text>
         </Pressable>
+        {showConfirmCod ? (
+          <Pressable style={[styles.codBtn, confirmingCod && styles.btnDisabled]} onPress={onConfirmCod} disabled={confirmingCod}>
+            <Text style={styles.codBtnText}>{confirmingCod ? "Saving..." : "Confirm COD Collected"}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -70,6 +80,7 @@ export default function MarketplaceSellerRequestsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [decisionId, setDecisionId] = useState("");
+  const [confirmingCodId, setConfirmingCodId] = useState("");
   const [error, setError] = useState("");
 
   const loadRequests = useCallback(async () => {
@@ -139,6 +150,30 @@ export default function MarketplaceSellerRequestsScreen({ navigation }) {
     }
   }
 
+  function handleConfirmCod(request) {
+    Alert.alert(
+      "Confirm Cash Collected",
+      `Mark this request as paid in cash and reduce stock by 1?\n\nBuyer: ${request?.buyerName || "Buyer"}\nOffer: ${formatCurrency(request?.negotiatedPrice)}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              setConfirmingCodId(request.id);
+              await api.confirmMarketplaceCodCollected(request.id);
+              await loadRequests();
+            } catch (err) {
+              setError(err.message || "Could not confirm COD payment");
+            } finally {
+              setConfirmingCodId("");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
@@ -174,9 +209,11 @@ export default function MarketplaceSellerRequestsScreen({ navigation }) {
           key={request.id}
           item={request}
           deciding={decisionId === request.id}
+          confirmingCod={confirmingCodId === request.id}
           onOpenPost={() => navigation.navigate("MarketplaceSellerDetail", { postId: request.postId })}
           onAccept={() => handleDecision(request.id, "ACCEPTED")}
           onDecline={() => handleDecision(request.id, "DECLINED")}
+          onConfirmCod={() => handleConfirmCod(request)}
         />
       ))}
     </ScrollView>
@@ -346,6 +383,16 @@ const styles = StyleSheet.create({
   },
   declineBtnText: {
     color: theme.colors.danger,
+    fontWeight: "800",
+  },
+  codBtn: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  codBtnText: {
+    color: "#ffffff",
     fontWeight: "800",
   },
   btnDisabled: {

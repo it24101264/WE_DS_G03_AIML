@@ -4,9 +4,9 @@ const { ROLES } = require("../constants/roles");
 const { makeId } = require("./id");
 
 async function seedStudyAreaAdmin() {
-  const email = String(process.env.STUDY_AREA_ADMIN_EMAIL || "studyadmin@sliit.local").trim().toLowerCase();
-  const password = String(process.env.STUDY_AREA_ADMIN_PASSWORD || "StudyAreaAdmin@2026");
-  const name = String(process.env.STUDY_AREA_ADMIN_NAME || "Study Area Admin").trim();
+  const email = String(process.env.DEFAULT_ADMIN_EMAIL || process.env.STUDY_AREA_ADMIN_EMAIL || "admin@sliit.local").trim().toLowerCase();
+  const password = String(process.env.DEFAULT_ADMIN_PASSWORD || process.env.STUDY_AREA_ADMIN_PASSWORD || "Admin@2026");
+  const name = String(process.env.DEFAULT_ADMIN_NAME || process.env.STUDY_AREA_ADMIN_NAME || "System Admin").trim();
 
   const existing = await User.findOne({ email });
   const passwordHash = await bcrypt.hash(password, 10);
@@ -18,8 +18,11 @@ async function seedStudyAreaAdmin() {
       email,
       passwordHash,
       role: ROLES.ADMIN,
+      isBanned: false,
+      bannedAt: null,
+      bannedReason: "",
     });
-    console.log(`Seeded study area admin: ${email}`);
+    console.log(`Seeded default admin: ${email}`);
     return;
   }
 
@@ -27,6 +30,13 @@ async function seedStudyAreaAdmin() {
 
   if (existing.role !== ROLES.ADMIN) {
     existing.role = ROLES.ADMIN;
+    shouldSave = true;
+  }
+
+  if (existing.isBanned) {
+    existing.isBanned = false;
+    existing.bannedAt = null;
+    existing.bannedReason = "";
     shouldSave = true;
   }
 
@@ -43,7 +53,7 @@ async function seedStudyAreaAdmin() {
 
   if (shouldSave) {
     await existing.save();
-    console.log(`Updated study area admin: ${email}`);
+    console.log(`Updated default admin: ${email}`);
   }
 }
 

@@ -150,7 +150,6 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
       setError(`Enter a valid price up to ${MAX_PRICE}`);
       return;
     }
-
     if (!shareablePhotos.length) {
       setError("Add at least one photo");
       return;
