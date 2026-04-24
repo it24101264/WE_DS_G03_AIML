@@ -5,8 +5,8 @@ const { KUPPI_TOPICS, normalizeKuppiTopic } = require("../constants/kuppiTopics"
 
 const REQUEST_STATUS = ["PENDING", "GROUPED", "SCHEDULED"];
 const SESSION_STATUS = ["DRAFT", "PUBLISHED", "REJECTED"];
-const TOPIC_MIN_LENGTH = 3;
-const TOPIC_MAX_LENGTH = 100;
+const TOPIC_MIN_LENGTH = 2;
+const TOPIC_MAX_LENGTH = 50;
 const DESCRIPTION_MAX_LENGTH = 500;
 const LOCATION_MAX_LENGTH = 120;
 const SLOT_MAX_LENGTH = 80;
