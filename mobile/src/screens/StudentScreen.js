@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, ScrollView, StyleSheet } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { api } from "../api";
 import { theme } from "../ui/theme";
 import { KUPPI_TOPICS } from "../constants/kuppiTopics";
+import SlotTimePicker from "../ui/SlotTimePicker";
 
 const DESCRIPTION_MAX_LENGTH = 500;
 
@@ -12,18 +12,6 @@ function createInitialSlotDate() {
   const next = new Date();
   next.setMinutes(0, 0, 0);
   next.setHours(next.getHours() + 1);
-  return next;
-}
-
-function mergeDatePart(base, selected) {
-  const next = new Date(base);
-  next.setFullYear(selected.getFullYear(), selected.getMonth(), selected.getDate());
-  return next;
-}
-
-function mergeTimePart(base, selected) {
-  const next = new Date(base);
-  next.setHours(selected.getHours(), selected.getMinutes(), 0, 0);
   return next;
 }
 
@@ -55,8 +43,6 @@ function StatusBadge({ value }) {
 export default function StudentScreen({ user, onLogout }) {
   const [topic, setTopic] = useState("");
   const [slotDateTime, setSlotDateTime] = useState(() => createInitialSlotDate());
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [availabilitySlots, setAvailabilitySlots] = useState([]);
   const [description, setDescription] = useState("");
   const [mine, setMine] = useState([]);
@@ -138,18 +124,6 @@ export default function StudentScreen({ user, onLogout }) {
     setAvailabilitySlots((prev) => prev.filter((s) => s !== slot));
   }
 
-  function onDateChange(_event, selectedDate) {
-    setShowDatePicker(false);
-    if (!selectedDate) return;
-    setSlotDateTime((current) => mergeDatePart(current, selectedDate));
-  }
-
-  function onTimeChange(_event, selectedTime) {
-    setShowTimePicker(false);
-    if (!selectedTime) return;
-    setSlotDateTime((current) => mergeTimePart(current, selectedTime));
-  }
-
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.pageContent}>
       <View style={styles.heroCard}>
@@ -196,27 +170,13 @@ export default function StudentScreen({ user, onLogout }) {
           </Picker>
         </View>
         <Text style={styles.helperLabel}>Availability Slot</Text>
-        <View style={styles.slotPickerRow}>
-          <Pressable
-            style={[styles.secondaryBtn, styles.slotPickerBtn]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={styles.secondaryBtnText}>Choose Date</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.secondaryBtn, styles.slotPickerBtn]}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Text style={styles.secondaryBtnText}>Choose Time</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.slotPreview}>Selected slot: {formatSlotLabel(slotDateTime)}</Text>
-        {showDatePicker ? (
-          <DateTimePicker value={slotDateTime} mode="date" minimumDate={new Date()} onChange={onDateChange} />
-        ) : null}
-        {showTimePicker ? (
-          <DateTimePicker value={slotDateTime} mode="time" onChange={onTimeChange} />
-        ) : null}
+        <SlotTimePicker
+          value={slotDateTime}
+          onChange={setSlotDateTime}
+          label="Select Date & Time"
+          placeholder="Tap to pick your available slot"
+          minDate={new Date()}
+        />
         <Pressable style={styles.secondaryBtn} onPress={addAvailabilitySlot}>
           <Text style={styles.secondaryBtnText}>Add Slot</Text>
         </Pressable>
@@ -423,18 +383,6 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: "700",
     marginTop: 2,
-  },
-  slotPickerRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  slotPickerBtn: {
-    flex: 1,
-    minHeight: 44,
-  },
-  slotPreview: {
-    color: theme.colors.text,
-    fontWeight: "600",
   },
   slotList: {
     gap: 6,

@@ -45,6 +45,7 @@ const kuppiSessionSchema = new mongoose.Schema(
     rejectedAt: { type: String, default: null },
     createdBy: { type: String, default: "" },
     keywords: { type: [String], default: [] },
+    cohesion: { type: Number, default: null },
   },
   { timestamps: true }
 );

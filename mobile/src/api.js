@@ -38,17 +38,18 @@ export const api = {
 
   createRequest: (payload) => apiRequest("/kuppi/requests", { method: "POST", body: payload }),
   myRequests: () => apiRequest("/kuppi/requests/mine"),
+  allRequests: () => apiRequest("/kuppi/requests/all"),
   sessions: () => apiRequest("/kuppi/sessions"),
   decideSession: (id, payload) => apiRequest(`/kuppi/sessions/${id}/decision`, { method: "PATCH", body: payload }),
 
-  mlGroups: (minSize = 5, maxClusters = 8, topClusters = 3) =>
+  mlGroups: (minSize = 5, maxClusters = 8, topClusters = 3, module = "") =>
     apiRequest(
-      `/ml/groups?minSize=${minSize}&maxClusters=${maxClusters}&topClusters=${topClusters}`
+      `/ml/groups?minSize=${minSize}&maxClusters=${maxClusters}&topClusters=${topClusters}${module ? `&module=${encodeURIComponent(module)}` : ""}`
     ),
-  applyMlGroups: (minSize = 5, maxClusters = 8, topClusters = 3) =>
+  applyMlGroups: (minSize = 5, maxClusters = 8, topClusters = 3, module = "") =>
     apiRequest("/ml/apply-groups", {
       method: "POST",
-      body: { minSize, maxClusters, topClusters },
+      body: { minSize, maxClusters, topClusters, module },
     }),
   parkingVehicleProfiles: () => apiRequest("/parking/vehicles"),
   createParkingVehicleProfile: (payload) => apiRequest("/parking/vehicles", { method: "POST", body: payload }),
