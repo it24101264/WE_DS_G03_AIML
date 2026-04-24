@@ -13,9 +13,10 @@ const DESCRIPTION_MIN = 10;
 const DESCRIPTION_MAX = 1000;
 const SELLER_NAME_MIN = 2;
 const SELLER_NAME_MAX = 60;
-const PHONE_MIN_DIGITS = 9;
-const PHONE_MAX_DIGITS = 15;
+const PHONE_MIN_DIGITS = 10;
+const PHONE_MAX_DIGITS = 10;
 const MAX_PRICE = 100000000;
+const CATEGORY_VALUES = ["Books", "Electronics", "Clothing", "Stationery", "Other"];
 
 function normalizePhotos(photos) {
   return Array.isArray(photos)
@@ -34,7 +35,12 @@ function normalizePhotos(photos) {
 function isValidPhoneNumber(value) {
   const text = String(value || "").trim();
   const digits = text.replace(/\D/g, "");
-  return /^[0-9+()\-\s]+$/.test(text) && digits.length >= PHONE_MIN_DIGITS && digits.length <= PHONE_MAX_DIGITS;
+  // Keep client validation aligned with server:
+  // Sri Lankan 10-digit mobile format: 07XXXXXXXX.
+  return /^[0-9+()\-\s]+$/.test(text)
+    && digits.length >= PHONE_MIN_DIGITS
+    && digits.length <= PHONE_MAX_DIGITS
+    && /^07\d{8}$/.test(digits);
 }
 
 export default function MarketplaceSellerFormScreen({ navigation, route, user }) {
@@ -45,6 +51,9 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
   const [description, setDescription] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [sellerName, setSellerName] = useState(user?.name || user?.fullName || "");
+  const [category, setCategory] = useState("Other");
+  const [availableQuantity, setAvailableQuantity] = useState("1");
+  const [costPrice, setCostPrice] = useState("");
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(isEditing);
@@ -64,6 +73,9 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
         setDescription(item.description || "");
         setContactNumber(item.contactNumber || "");
         setSellerName(item.sellerName || item.userName || user?.name || user?.fullName || "");
+        setCategory(CATEGORY_VALUES.includes(item.category) ? item.category : "Other");
+        setAvailableQuantity(item.availableQuantity != null ? String(item.availableQuantity) : "1");
+        setCostPrice(item.costPrice != null ? String(item.costPrice) : "");
         setPhotos(normalizePhotos(item.photos));
         setError("");
       } catch (err) {
@@ -122,7 +134,10 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
     const cleanDescription = description.trim();
     const cleanContactNumber = contactNumber.trim();
     const cleanSellerName = sellerName.trim();
+    const cleanCategory = String(category || "").trim();
     const numericPrice = Number(price);
+    const numericQuantity = Number.parseInt(String(availableQuantity || "1"), 10);
+    const numericCostPrice = costPrice.trim() ? Number(costPrice) : null;
     const shareablePhotos = photos.filter((photo) => photo?.base64DataUrl || (photo?.uri && !String(photo.uri).startsWith("file:")));
 
     if (!cleanTitle || !cleanDescription || !cleanContactNumber || !cleanSellerName || !price.trim()) {
@@ -142,12 +157,20 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
       return;
     }
     if (!isValidPhoneNumber(cleanContactNumber)) {
-      setError("Enter a valid mobile number");
+      setError("Enter a valid mobile number (07xxxxxxxx)");
       return;
     }
 
     if (!Number.isFinite(numericPrice) || numericPrice <= 0 || numericPrice > MAX_PRICE) {
       setError(`Enter a valid price up to ${MAX_PRICE}`);
+      return;
+    }
+    if (!Number.isInteger(numericQuantity) || numericQuantity < 0 || numericQuantity > 999) {
+      setError("Available quantity must be a whole number between 0 and 999");
+      return;
+    }
+    if (numericCostPrice != null && (!Number.isFinite(numericCostPrice) || numericCostPrice < 0 || numericCostPrice > MAX_PRICE)) {
+      setError(`Cost price must be between 0 and ${MAX_PRICE}`);
       return;
     }
     if (!shareablePhotos.length) {
@@ -164,6 +187,9 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
       description: cleanDescription,
       contactNumber: cleanContactNumber,
       sellerName: cleanSellerName,
+      category: CATEGORY_VALUES.includes(cleanCategory) ? cleanCategory : "Other",
+      availableQuantity: numericQuantity,
+      costPrice: numericCostPrice,
       photos,
     };
 
@@ -228,6 +254,26 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
           keyboardType="numeric"
         />
 
+        <Text style={styles.label}>Available quantity</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="1"
+          placeholderTextColor={theme.colors.textMuted}
+          value={availableQuantity}
+          onChangeText={setAvailableQuantity}
+          keyboardType="numeric"
+        />
+
+        <Text style={styles.label}>Cost price (optional)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Your cost (optional)"
+          placeholderTextColor={theme.colors.textMuted}
+          value={costPrice}
+          onChangeText={setCostPrice}
+          keyboardType="numeric"
+        />
+
         <Text style={styles.label}>Mobile number</Text>
         <TextInput
           style={styles.input}
@@ -246,6 +292,22 @@ export default function MarketplaceSellerFormScreen({ navigation, route, user })
           value={sellerName}
           onChangeText={setSellerName}
         />
+
+        <Text style={styles.label}>Category</Text>
+        <View style={styles.filterRow}>
+          {CATEGORY_VALUES.map((value) => {
+            const active = value === category;
+            return (
+              <Pressable
+                key={value}
+                style={[styles.filterChip, active && styles.filterChipActive]}
+                onPress={() => setCategory(value)}
+              >
+                <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{value}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Text style={styles.label}>Description</Text>
         <TextInput
@@ -322,6 +384,31 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 2,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.infoBg,
+    borderColor: theme.colors.infoBg,
+  },
+  filterChipText: {
+    color: theme.colors.text,
+    fontWeight: "800",
+  },
+  filterChipTextActive: {
+    color: theme.colors.infoText,
   },
   photoCard: {
     width: "48%",

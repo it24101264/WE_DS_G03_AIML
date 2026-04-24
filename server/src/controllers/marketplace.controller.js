@@ -5,7 +5,7 @@ const MarketplaceFavorite = require("../models/MarketplaceFavorite");
 const User = require("../models/user");
 const { makeId } = require("../utils/id");
 
-const { STATUS_VALUES } = require("../models/MarketplacePost");
+const { STATUS_VALUES, CATEGORY_VALUES } = require("../models/MarketplacePost");
 const { REQUEST_STATUS_VALUES } = require("../models/MarketplaceRequest");
 
 const MARKETPLACE_LIMITS = {
@@ -20,6 +20,9 @@ const MARKETPLACE_LIMITS = {
   phoneMinDigits: 10,
   phoneMaxDigits: 10,
   maxPrice: 100000000,
+  maxCostPrice: 100000000,
+  minQuantity: 0,
+  maxQuantity: 999,
   minOfferRatio: 0.3,
   requestUpdateWindowHours: 3,
 };
@@ -27,6 +30,11 @@ const MARKETPLACE_LIMITS = {
 function normalizeStatus(value) {
   const normalized = String(value || "").trim().toUpperCase();
   return STATUS_VALUES.includes(normalized) ? normalized : null;
+}
+
+function normalizeCategory(value) {
+  const normalized = String(value || "").trim();
+  return CATEGORY_VALUES.includes(normalized) ? normalized : null;
 }
 
 function normalizeSort(value) {
@@ -89,6 +97,17 @@ function hasValidPhoneNumber(value) {
 
 function isValidMarketplacePrice(value) {
   return Number.isFinite(value) && value > 0 && value <= MARKETPLACE_LIMITS.maxPrice;
+}
+
+function isValidMarketplaceCostPrice(value) {
+  return value == null || (Number.isFinite(value) && value >= 0 && value <= MARKETPLACE_LIMITS.maxCostPrice);
+}
+
+function isValidQuantity(value) {
+  return Number.isFinite(value)
+    && Number.isInteger(value)
+    && value >= MARKETPLACE_LIMITS.minQuantity
+    && value <= MARKETPLACE_LIMITS.maxQuantity;
 }
 
 function isRequestFinalized(value) {
@@ -195,7 +214,7 @@ async function revertExpiredRequests() {
   }
 }
 
-function validateSellerPostInput({ title, description, sellerName, contactNumber, price, photos }) {
+function validateSellerPostInput({ title, description, sellerName, contactNumber, price, photos, category, availableQuantity, costPrice }) {
   if (!title) {
     return "title is required";
   }
@@ -219,6 +238,15 @@ function validateSellerPostInput({ title, description, sellerName, contactNumber
   }
   if (!hasValidPhoneNumber(contactNumber)) {
     return "contactNumber must be a valid phone number";
+  }
+  if (category && !normalizeCategory(category)) {
+    return `category must be one of: ${CATEGORY_VALUES.join(", ")}`;
+  }
+  if (!isValidMarketplaceCostPrice(costPrice)) {
+    return `costPrice must be a valid non-negative number not greater than ${MARKETPLACE_LIMITS.maxCostPrice}`;
+  }
+  if (availableQuantity != null && !isValidQuantity(availableQuantity)) {
+    return `availableQuantity must be an integer between ${MARKETPLACE_LIMITS.minQuantity}-${MARKETPLACE_LIMITS.maxQuantity}`;
   }
   if (!isValidMarketplacePrice(price)) {
     return `price must be a positive number not greater than ${MARKETPLACE_LIMITS.maxPrice}`;
@@ -325,6 +353,7 @@ function toPublicRequest(request, viewerId = "", post = null) {
       ? {
           id: post.id,
           title: post.title,
+          category: post.category || "Other",
           price: post.price,
           status: post.status,
           photos: Array.isArray(post.photos) ? post.photos : [],
@@ -349,8 +378,11 @@ function toPublicPost(post, viewerId = "") {
     sellerName: post.sellerName,
     contactNumber: isOwner || acceptedViewerRequest ? post.contactNumber : "",
     title: post.title,
+    category: post.category || "Other",
     description: post.description || "",
     price: post.price,
+    costPrice: isOwner ? post.costPrice : null,
+    availableQuantity: isOwner ? Number(post.availableQuantity ?? 0) : undefined,
     status: post.status,
     photos: Array.isArray(post.photos) ? post.photos : [],
     messageCount: messages.length,
@@ -458,7 +490,12 @@ exports.createPost = async (req, res, next) => {
     const description = String(req.body?.description || "").trim();
     const sellerName = String(req.body?.sellerName || "").trim();
     const contactNumber = String(req.body?.contactNumber || "").trim();
+    const category = String(req.body?.category || "").trim();
     const price = Number(req.body?.price);
+    const costPrice = Object.prototype.hasOwnProperty.call(req.body || {}, "costPrice") ? Number(req.body?.costPrice) : null;
+    const availableQuantity = Object.prototype.hasOwnProperty.call(req.body || {}, "availableQuantity")
+      ? Number.parseInt(req.body?.availableQuantity, 10)
+      : 1;
     const photos = normalizePhotos(req.body?.photos);
 
     if (!userId) {
@@ -471,6 +508,9 @@ exports.createPost = async (req, res, next) => {
       contactNumber,
       price,
       photos,
+      category,
+      costPrice,
+      availableQuantity,
     });
     if (sellerValidationError) {
       return res.status(400).json({ success: false, message: sellerValidationError });
@@ -488,9 +528,11 @@ exports.createPost = async (req, res, next) => {
       contactNumber,
       title,
       titleKey: title.toLowerCase(),
+      category: normalizeCategory(category) || "Other",
       description,
       price,
-      availableQuantity: 1,
+      costPrice: costPrice != null && Number.isFinite(costPrice) ? costPrice : null,
+      availableQuantity: Number.isFinite(availableQuantity) ? Math.max(0, availableQuantity) : 1,
       status: "ACTIVE",
       photos,
     });
@@ -684,7 +726,12 @@ exports.updatePost = async (req, res, next) => {
     const description = String(req.body?.description || "").trim();
     const sellerName = String(req.body?.sellerName || "").trim();
     const contactNumber = String(req.body?.contactNumber || "").trim();
+    const category = String(req.body?.category || "").trim();
     const price = Number(req.body?.price);
+    const costPrice = Object.prototype.hasOwnProperty.call(req.body || {}, "costPrice") ? Number(req.body?.costPrice) : null;
+    const availableQuantity = Object.prototype.hasOwnProperty.call(req.body || {}, "availableQuantity")
+      ? Number.parseInt(req.body?.availableQuantity, 10)
+      : post.availableQuantity;
     const photos = normalizePhotos(req.body?.photos);
 
     const sellerValidationError = validateSellerPostInput({
@@ -694,6 +741,9 @@ exports.updatePost = async (req, res, next) => {
       contactNumber,
       price,
       photos,
+      category,
+      costPrice,
+      availableQuantity,
     });
     if (sellerValidationError) {
       return res.status(400).json({ success: false, message: sellerValidationError });
@@ -701,11 +751,13 @@ exports.updatePost = async (req, res, next) => {
 
     post.title = title;
     post.titleKey = title.toLowerCase();
+    post.category = normalizeCategory(category) || "Other";
     post.description = description;
     post.sellerName = sellerName;
     post.contactNumber = contactNumber;
     post.price = price;
-    post.availableQuantity = 1;
+    post.costPrice = costPrice != null && Number.isFinite(costPrice) ? costPrice : null;
+    post.availableQuantity = Number.isFinite(availableQuantity) ? Math.max(0, availableQuantity) : post.availableQuantity;
     post.photos = photos;
 
     await post.save();
@@ -874,6 +926,312 @@ exports.getMyRequests = async (req, res, next) => {
       success: true,
       data: requests.map((request) => toPublicRequest(request, userId, postMap.get(String(request.postId)) || null)),
     });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.getRequestsToMe = async (req, res, next) => {
+  try {
+    // Auto-revert any expired accepted requests first
+    await revertExpiredRequests();
+
+    const sellerId = String(req.user?.id || req.user?.userId || "").trim();
+    if (!sellerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const status = req.query?.status ? normalizeRequestStatus(req.query.status) : null;
+    const query = { sellerId };
+    if (status) query.status = status;
+
+    const requests = await MarketplaceRequest.find(query).sort({ updatedAt: -1 }).lean();
+    const postIds = [...new Set(requests.map((request) => String(request.postId)).filter(Boolean))];
+    const posts = await MarketplacePost.find({ id: { $in: postIds } }).lean();
+    const postMap = new Map(posts.map((post) => [String(post.id), post]));
+
+    return res.json({
+      success: true,
+      data: requests.map((request) => toPublicRequest(request, sellerId, postMap.get(String(request.postId)) || null)),
+    });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+function parseDateParam(value) {
+  if (!value) return null;
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function toCsvRow(cells) {
+  return cells
+    .map((cell) => {
+      const text = cell == null ? "" : String(cell);
+      const escaped = text.replace(/"/g, '""');
+      return `"${escaped}"`;
+    })
+    .join(",");
+}
+
+async function buildSellerAnalytics(sellerId, { startDate, endDate } = {}) {
+  const dateQuery = {};
+  if (startDate || endDate) {
+    dateQuery.createdAt = {};
+    if (startDate) dateQuery.createdAt.$gte = startDate;
+    if (endDate) dateQuery.createdAt.$lte = endDate;
+  }
+
+  const [allRequests, acceptedRequests, paidRequests] = await Promise.all([
+    MarketplaceRequest.countDocuments({ sellerId, ...dateQuery }),
+    MarketplaceRequest.countDocuments({ sellerId, status: "ACCEPTED", ...dateQuery }),
+    MarketplaceRequest.find({ sellerId, status: "ACCEPTED", paymentStatus: "paid", ...dateQuery })
+      .select("postId negotiatedPrice paidAt createdAt updatedAt")
+      .lean(),
+  ]);
+
+  const revenue = paidRequests.reduce((sum, r) => sum + Number(r?.negotiatedPrice || 0), 0);
+  const orders = paidRequests.length;
+  const conversion = allRequests > 0 ? acceptedRequests / allRequests : 0;
+
+  // Best-selling products by paid orders
+  const countsByPost = new Map();
+  for (const req of paidRequests) {
+    const postId = String(req?.postId || "");
+    if (!postId) continue;
+    countsByPost.set(postId, (countsByPost.get(postId) || 0) + 1);
+  }
+
+  const topPostIds = [...countsByPost.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([postId]) => postId);
+
+  const topPosts = topPostIds.length
+    ? await MarketplacePost.find({ id: { $in: topPostIds } }).select("id title category price costPrice availableQuantity status").lean()
+    : [];
+  const postMap = new Map(topPosts.map((p) => [String(p.id), p]));
+
+  const bestSelling = topPostIds
+    .map((postId) => {
+      const post = postMap.get(String(postId));
+      if (!post) return null;
+      return {
+        postId,
+        title: post.title,
+        category: post.category || "Other",
+        paidOrders: countsByPost.get(String(postId)) || 0,
+        listingPrice: post.price,
+      };
+    })
+    .filter(Boolean);
+
+  // Profit estimate (if costPrice is set on listing). If missing, we exclude from estimate.
+  const costByPostId = new Map(topPosts.map((p) => [String(p.id), p.costPrice]));
+  let profitSum = 0;
+  let profitCounted = 0;
+  for (const req of paidRequests) {
+    const cost = costByPostId.get(String(req.postId));
+    if (cost == null || !Number.isFinite(Number(cost))) continue;
+    profitSum += Number(req.negotiatedPrice || 0) - Number(cost || 0);
+    profitCounted += 1;
+  }
+  const profitEstimate = profitCounted ? Number(profitSum.toFixed(2)) : null;
+
+  // Alerts
+  const lowStockThreshold = 2;
+  const lowStockPosts = await MarketplacePost.find({
+    userId: sellerId,
+    status: "ACTIVE",
+    availableQuantity: { $lte: lowStockThreshold },
+  })
+    .select("id title availableQuantity category status")
+    .sort({ availableQuantity: 1, updatedAt: -1 })
+    .limit(10)
+    .lean();
+
+  const alerts = [];
+  if (lowStockPosts.length) {
+    alerts.push({
+      type: "stock_running_out",
+      message: `Low stock on ${lowStockPosts.length} listing(s) (≤ ${lowStockThreshold})`,
+      items: lowStockPosts.map((p) => ({
+        postId: p.id,
+        title: p.title,
+        category: p.category || "Other",
+        availableQuantity: p.availableQuantity ?? 0,
+      })),
+    });
+  }
+
+  // Placeholders for features not yet modeled in DB
+  alerts.push({
+    type: "listing_rejected",
+    message: "Listing rejection alerts require moderation flow (not implemented).",
+    items: [],
+  });
+  alerts.push({
+    type: "high_return_rate",
+    message: "Return-rate alerts require returns/refunds data (not implemented).",
+    items: [],
+  });
+
+  return {
+    revenue: Number(revenue.toFixed(2)),
+    orders,
+    acceptedRequests,
+    totalRequests: allRequests,
+    conversion,
+    bestSelling,
+    profitEstimate,
+    profitEstimateCoverageOrders: profitCounted,
+    alerts,
+  };
+}
+
+exports.getSellerAnalytics = async (req, res, next) => {
+  try {
+    const sellerId = String(req.user?.id || req.user?.userId || "").trim();
+    if (!sellerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const startDate = parseDateParam(req.query?.start);
+    const endDate = parseDateParam(req.query?.end);
+    const data = await buildSellerAnalytics(sellerId, { startDate, endDate });
+    return res.json({ success: true, data });
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.getSellerReportCsv = async (req, res, next) => {
+  try {
+    const sellerId = String(req.user?.id || req.user?.userId || "").trim();
+    if (!sellerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const startDate = parseDateParam(req.query?.start);
+    const endDate = parseDateParam(req.query?.end);
+    const dateQuery = {};
+    if (startDate || endDate) {
+      dateQuery.createdAt = {};
+      if (startDate) dateQuery.createdAt.$gte = startDate;
+      if (endDate) dateQuery.createdAt.$lte = endDate;
+    }
+
+    const rows = await MarketplaceRequest.find({ sellerId, ...dateQuery })
+      .select("id postId buyerId buyerName negotiatedPrice status paymentMethod paymentStatus createdAt updatedAt paidAt")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const postIds = [...new Set(rows.map((r) => String(r.postId || "")).filter(Boolean))];
+    const posts = await MarketplacePost.find({ id: { $in: postIds } }).select("id title category price").lean();
+    const postMap = new Map(posts.map((p) => [String(p.id), p]));
+
+    const header = toCsvRow([
+      "requestId",
+      "postId",
+      "postTitle",
+      "category",
+      "listingPrice",
+      "negotiatedPrice",
+      "status",
+      "paymentMethod",
+      "paymentStatus",
+      "buyerName",
+      "createdAt",
+      "paidAt",
+    ]);
+
+    const lines = [header];
+    for (const r of rows) {
+      const post = postMap.get(String(r.postId)) || {};
+      lines.push(
+        toCsvRow([
+          r.id,
+          r.postId,
+          post.title || "",
+          post.category || "Other",
+          post.price ?? "",
+          r.negotiatedPrice ?? "",
+          r.status,
+          r.paymentMethod || "",
+          r.paymentStatus || "",
+          r.buyerName || "",
+          r.createdAt ? new Date(r.createdAt).toISOString() : "",
+          r.paidAt ? new Date(r.paidAt).toISOString() : "",
+        ])
+      );
+    }
+
+    const csv = `${lines.join("\n")}\n`;
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename=\"seller_report_${Date.now()}.csv\"`);
+    return res.status(200).send(csv);
+  } catch (err) {
+    return next(err);
+  }
+};
+
+exports.getSellerReportPdf = async (req, res, next) => {
+  try {
+    const sellerId = String(req.user?.id || req.user?.userId || "").trim();
+    if (!sellerId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const startDate = parseDateParam(req.query?.start);
+    const endDate = parseDateParam(req.query?.end);
+    const analytics = await buildSellerAnalytics(sellerId, { startDate, endDate });
+
+    // Lazy require so server still boots if PDF is unused
+    // eslint-disable-next-line global-require
+    const PDFDocument = require("pdfkit");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=\"seller_report_${Date.now()}.pdf\"`);
+
+    const doc = new PDFDocument({ margin: 40 });
+    doc.pipe(res);
+
+    doc.fontSize(18).text("Seller Analytics Report", { bold: true });
+    doc.moveDown(0.3);
+    doc.fontSize(10).fillColor("#555").text(`Generated: ${new Date().toLocaleString()}`);
+    doc.fillColor("#000");
+    if (startDate || endDate) {
+      doc.text(`Date range: ${startDate ? startDate.toLocaleDateString() : "-"} to ${endDate ? endDate.toLocaleDateString() : "-"}`);
+    }
+    doc.moveDown();
+
+    doc.fontSize(12).text(`Revenue: LKR ${analytics.revenue.toLocaleString()}`);
+    doc.text(`Orders (paid): ${analytics.orders}`);
+    doc.text(`Conversion: ${(analytics.conversion * 100).toFixed(1)}%`);
+    doc.text(`Accepted requests: ${analytics.acceptedRequests}`);
+    doc.text(`Total requests: ${analytics.totalRequests}`);
+    doc.text(`Profit estimate: ${analytics.profitEstimate == null ? "N/A" : `LKR ${analytics.profitEstimate.toLocaleString()}`}`);
+    doc.moveDown();
+
+    doc.fontSize(14).text("Best-selling products", { underline: true });
+    doc.moveDown(0.4);
+    if (!analytics.bestSelling.length) {
+      doc.fontSize(11).text("No paid orders in this period.");
+    } else {
+      analytics.bestSelling.forEach((p, idx) => {
+        doc.fontSize(11).text(`${idx + 1}. ${p.title} (${p.category}) — paid orders: ${p.paidOrders}`);
+      });
+    }
+    doc.moveDown();
+
+    doc.fontSize(14).text("Alerts", { underline: true });
+    doc.moveDown(0.4);
+    analytics.alerts.forEach((a) => {
+      doc.fontSize(11).text(`- ${a.type}: ${a.message}`);
+    });
+
+    doc.end();
   } catch (err) {
     return next(err);
   }

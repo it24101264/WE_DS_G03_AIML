@@ -37,6 +37,32 @@ export async function apiRequest(path, { method = "GET", body } = {}) {
   return data;
 }
 
+export async function apiRequestRaw(path, { method = "GET" } = {}) {
+  const headers = {};
+  const token = await getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const url = `${API_BASE}${path}`;
+  console.log("API CALL (raw) ->", url);
+
+  let res;
+  try {
+    res = await fetch(url, { method, headers });
+  } catch (err) {
+    const message = err?.message || "Network request failed";
+    console.log("API NETWORK ERROR <-", method, url, message);
+    throw new Error(`Network error (${method} ${url}): ${message}`);
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { parsed = null; }
+    throw new Error(parsed?.message || text || `HTTP ${res.status}`);
+  }
+
+  return res;
+}
+
 export const api = {
   register: (payload) => apiRequest("/auth/register", { method: "POST", body: payload }),
   login: (payload) => apiRequest("/auth/login", { method: "POST", body: payload }),
@@ -133,6 +159,35 @@ export const api = {
   createMarketplaceRequest: (postId, payload) =>
     apiRequest(`/marketplace/${encodeURIComponent(postId)}/requests`, { method: "POST", body: payload }),
   myMarketplaceRequests: () => apiRequest("/marketplace/requests/mine"),
+  sellerMarketplaceRequests: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.status) search.set("status", params.status);
+    const qs = search.toString();
+    return apiRequest(`/marketplace/requests/to-me${qs ? `?${qs}` : ""}`);
+  },
+  sellerMarketplaceAnalytics: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.start) search.set("start", params.start);
+    if (params.end) search.set("end", params.end);
+    const qs = search.toString();
+    return apiRequest(`/marketplace/analytics/seller${qs ? `?${qs}` : ""}`);
+  },
+  sellerMarketplaceReportCsv: async (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.start) search.set("start", params.start);
+    if (params.end) search.set("end", params.end);
+    const qs = search.toString();
+    const res = await apiRequestRaw(`/marketplace/reports/seller.csv${qs ? `?${qs}` : ""}`);
+    return await res.text();
+  },
+  sellerMarketplaceReportPdf: async (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.start) search.set("start", params.start);
+    if (params.end) search.set("end", params.end);
+    const qs = search.toString();
+    const res = await apiRequestRaw(`/marketplace/reports/seller.pdf${qs ? `?${qs}` : ""}`);
+    return await res.arrayBuffer();
+  },
   myMarketplaceCart: () => apiRequest("/marketplace/cart"),
   addMarketplaceCartItem: (payload) => apiRequest("/marketplace/cart/items", { method: "POST", body: payload }),
   checkoutMarketplaceCart: (payload) => apiRequest("/marketplace/cart/checkout", { method: "POST", body: payload }),
