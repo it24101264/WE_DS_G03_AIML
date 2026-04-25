@@ -1,16 +1,30 @@
-import React, { useCallback, useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../api";
 import { theme } from "../ui/theme";
 import { MARKETPLACE_STATUS, SellerPostCard } from "./marketplaceShared";
 
+const CATEGORY_FILTERS = ["All", "Books", "Electronics", "Clothing", "Stationery", "Other"];
+const STATUS_FILTERS = ["All", "Available", "Sold"];
+
+function FilterChip({ label, active, onPress }) {
+  return (
+    <Pressable style={[styles.filterChip, active && styles.filterChipActive]} onPress={onPress}>
+      <Text style={[styles.filterChipText, active && styles.filterChipTextActive]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 export default function MarketplaceSellerHomeScreen({ navigation, user }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [actionPostId, setActionPostId] = useState("");
+  const [searchText, setSearchText] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
@@ -66,10 +80,33 @@ export default function MarketplaceSellerHomeScreen({ navigation, user }) {
 
   const activeCount = posts.filter((post) => String(post.status || "").toUpperCase() !== MARKETPLACE_STATUS.SOLD).length;
   const soldCount = posts.length - activeCount;
+  const totalAvailableValue = posts
+    .filter((post) => String(post.status || "").toUpperCase() !== MARKETPLACE_STATUS.SOLD)
+    .reduce((sum, post) => sum + Number(post.price || 0), 0);
   const totalRequests = posts.reduce(
     (sum, post) => sum + Number(post.requestCount || (Array.isArray(post.requests) ? post.requests.length : 0)),
     0
   );
+
+  const filteredPosts = useMemo(() => {
+    const q = String(searchText || "").trim().toLowerCase();
+    const desiredCategory = String(categoryFilter || "All");
+    const desiredStatus = String(statusFilter || "All");
+
+    return posts.filter((post) => {
+      const title = String(post?.title || "").toLowerCase();
+      if (q && !title.includes(q)) return false;
+
+      const category = String(post?.category || "Other");
+      if (desiredCategory !== "All" && category !== desiredCategory) return false;
+
+      const isSold = String(post?.status || "").toUpperCase() === MARKETPLACE_STATUS.SOLD;
+      if (desiredStatus === "Available" && isSold) return false;
+      if (desiredStatus === "Sold" && !isSold) return false;
+
+      return true;
+    });
+  }, [posts, searchText, categoryFilter, statusFilter]);
 
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content}>
@@ -93,6 +130,10 @@ export default function MarketplaceSellerHomeScreen({ navigation, user }) {
             <Text style={styles.statLabel}>Sold</Text>
           </View>
           <View style={styles.statCard}>
+            <Text style={styles.statValue}>LKR {totalAvailableValue.toLocaleString()}</Text>
+            <Text style={styles.statLabel}>Available value</Text>
+          </View>
+          <View style={styles.statCard}>
             <Text style={styles.statValue}>{totalRequests}</Text>
             <Text style={styles.statLabel}>Requests</Text>
           </View>
@@ -106,6 +147,12 @@ export default function MarketplaceSellerHomeScreen({ navigation, user }) {
           <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("MarketplaceSellerRequests")}>
             <Text style={styles.secondaryBtnText}>Requests</Text>
           </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("MarketplaceSellerSales")}>
+            <Text style={styles.secondaryBtnText}>Sales</Text>
+          </Pressable>
+          <Pressable style={styles.secondaryBtn} onPress={() => navigation.navigate("MarketplaceSellerAnalytics")}>
+            <Text style={styles.secondaryBtnText}>Analytics</Text>
+          </Pressable>
           <Pressable style={styles.secondaryBtn} onPress={loadPosts}>
             <Text style={styles.secondaryBtnText}>{loading ? "Refreshing..." : "Refresh"}</Text>
           </Pressable>
@@ -114,19 +161,58 @@ export default function MarketplaceSellerHomeScreen({ navigation, user }) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>My Listings</Text>
-        <Text style={styles.sectionMeta}>{posts.length} item(s)</Text>
+      <View style={styles.filterCard}>
+        <Text style={styles.filterTitle}>Search & filters</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by title..."
+          placeholderTextColor={theme.colors.textMuted}
+          value={searchText}
+          onChangeText={setSearchText}
+        />
+
+        <Text style={styles.filterLabel}>Category</Text>
+        <View style={styles.filterRow}>
+          {CATEGORY_FILTERS.map((label) => (
+            <FilterChip
+              key={label}
+              label={label}
+              active={label === categoryFilter}
+              onPress={() => setCategoryFilter(label)}
+            />
+          ))}
+        </View>
+
+        <Text style={styles.filterLabel}>Status</Text>
+        <View style={styles.filterRow}>
+          {STATUS_FILTERS.map((label) => (
+            <FilterChip
+              key={label}
+              label={label}
+              active={label === statusFilter}
+              onPress={() => setStatusFilter(label)}
+            />
+          ))}
+        </View>
       </View>
 
-      {posts.length === 0 ? (
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>My Listings</Text>
+        <Text style={styles.sectionMeta}>{filteredPosts.length} item(s)</Text>
+      </View>
+
+      {filteredPosts.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>No items yet</Text>
-          <Text style={styles.emptySubtitle}>Add your first item to start selling.</Text>
+          <Text style={styles.emptyTitle}>{posts.length ? "No matches" : "No items yet"}</Text>
+          <Text style={styles.emptySubtitle}>
+            {posts.length
+              ? "Try changing your search or filters."
+              : "Add your first item to start selling."}
+          </Text>
         </View>
       ) : null}
 
-      {posts.map((post) => (
+      {filteredPosts.map((post) => (
         <SellerPostCard
           key={post.id}
           item={post}
@@ -265,5 +351,57 @@ const styles = StyleSheet.create({
   error: {
     color: theme.colors.danger,
     fontSize: 13,
+  },
+  filterCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    gap: 10,
+    ...theme.shadow.soft,
+  },
+  filterTitle: {
+    color: theme.colors.text,
+    fontWeight: "900",
+    fontSize: 16,
+  },
+  searchInput: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: theme.colors.surfaceAlt,
+    color: theme.colors.text,
+  },
+  filterLabel: {
+    color: theme.colors.text,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceAlt,
+  },
+  filterChipActive: {
+    backgroundColor: theme.colors.infoBg,
+    borderColor: theme.colors.infoBg,
+  },
+  filterChipText: {
+    color: theme.colors.text,
+    fontWeight: "800",
+  },
+  filterChipTextActive: {
+    color: theme.colors.infoText,
   },
 });

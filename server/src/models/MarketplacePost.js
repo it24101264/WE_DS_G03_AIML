@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const STATUS_VALUES = ["ACTIVE", "SOLD"];
+const CATEGORY_VALUES = ["Books", "Electronics", "Clothing", "Stationery", "Other"];
 
 const photoSchema = new mongoose.Schema(
   {
@@ -34,12 +35,14 @@ const marketplacePostSchema = new mongoose.Schema(
     contactNumber: { type: String, required: true, trim: true },
     title: { type: String, required: true, trim: true },
     titleKey: { type: String, required: true, trim: true, index: true },
+    category: { type: String, enum: CATEGORY_VALUES, default: "Other", index: true },
     description: { type: String, default: "", trim: true },
     searchText: { type: String, default: "", trim: true },
     descriptionEmbedding: { type: [Number], default: [] },
     embeddingModel: { type: String, default: "", trim: true },
     embeddingUpdatedAt: { type: Date, default: null },
     price: { type: Number, required: true, min: 0 },
+    costPrice: { type: Number, default: null, min: 0 },
     availableQuantity: { type: Number, required: true, min: 0, default: 1 },
     status: { type: String, enum: STATUS_VALUES, default: "ACTIVE", index: true },
     photos: { type: [photoSchema], default: [] },
@@ -50,3 +53,4 @@ const marketplacePostSchema = new mongoose.Schema(
 
 module.exports = mongoose.model("MarketplacePost", marketplacePostSchema);
 module.exports.STATUS_VALUES = STATUS_VALUES;
+module.exports.CATEGORY_VALUES = CATEGORY_VALUES;

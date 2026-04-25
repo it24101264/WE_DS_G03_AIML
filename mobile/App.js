@@ -24,9 +24,11 @@ import MarketplaceBuyerRequestsScreen from "./src/screens/MarketplaceBuyerReques
 import MarketplaceBuyerCartScreen from "./src/screens/MarketplaceBuyerCartScreen";
 import MarketplaceChoiceScreen from "./src/screens/MarketplaceChoiceScreen";
 import MarketplaceSellerDetailScreen from "./src/screens/MarketplaceSellerDetailScreen";
+import MarketplaceSellerAnalyticsScreen from "./src/screens/MarketplaceSellerAnalyticsScreen";
 import MarketplaceSellerFormScreen from "./src/screens/MarketplaceSellerFormScreen";
 import MarketplaceSellerHomeScreen from "./src/screens/MarketplaceSellerHomeScreen";
 import MarketplaceSellerRequestsScreen from "./src/screens/MarketplaceSellerRequestsScreen";
+import MarketplaceSellerSalesScreen from "./src/screens/MarketplaceSellerSalesScreen";
 import StudentScreen from "./src/screens/StudentScreen";
 import RepScreen from "./src/screens/RepScreen";
 import CanteenBottomTabs from "./src/screens/CanteenBottomTabs";
@@ -249,6 +251,14 @@ export default function App() {
 
             <Stack.Screen name="MarketplaceSellerRequests" options={{ title: "Seller Requests" }}>
               {(props) => <MarketplaceSellerRequestsScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceSellerSales" options={{ title: "Seller Sales" }}>
+              {(props) => <MarketplaceSellerSalesScreen {...props} user={user} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="MarketplaceSellerAnalytics" options={{ title: "Seller Analytics" }}>
+              {(props) => <MarketplaceSellerAnalyticsScreen {...props} user={user} />}
             </Stack.Screen>
 
             <Stack.Screen name="MarketplaceBuyerHome" options={{ title: "Buyer Side" }}>

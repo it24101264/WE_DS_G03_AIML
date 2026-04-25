@@ -5,11 +5,29 @@ import { api } from "../api";
 import { theme } from "../ui/theme";
 import { formatCurrency, formatMarketplaceTime, MARKETPLACE_STATUS, PhotoStrip, SellerStatusBadge } from "./marketplaceShared";
 
+function RequestDecisionBadge({ status }) {
+  const safeStatus = String(status || "PENDING").toUpperCase();
+  const palette =
+    safeStatus === "ACCEPTED"
+      ? { bg: theme.colors.successBg, text: theme.colors.successText }
+      : safeStatus === "DECLINED"
+        ? { bg: "#ffe2df", text: theme.colors.danger }
+        : { bg: theme.colors.warningBg, text: theme.colors.warningText };
+
+  return (
+    <View style={[styles.decisionBadge, { backgroundColor: palette.bg }]}>
+      <Text style={[styles.decisionBadgeText, { color: palette.text }]}>{safeStatus}</Text>
+    </View>
+  );
+}
+
 export default function MarketplaceSellerDetailScreen({ navigation, route }) {
   const postId = route?.params?.postId;
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [decisionId, setDecisionId] = useState("");
+  const [confirmingCodId, setConfirmingCodId] = useState("");
   const [error, setError] = useState("");
 
   const loadPost = useCallback(async () => {
@@ -40,6 +58,42 @@ export default function MarketplaceSellerDetailScreen({ navigation, route }) {
     } finally {
       setActionLoading(false);
     }
+  }
+
+  async function handleDecision(requestId, status) {
+    try {
+      setDecisionId(requestId);
+      await api.decideMarketplaceRequest(requestId, { status });
+      await loadPost();
+    } catch (err) {
+      setError(err.message || `Could not ${status === "ACCEPTED" ? "accept" : "decline"} this request`);
+    } finally {
+      setDecisionId("");
+    }
+  }
+
+  function handleConfirmCod(request) {
+    Alert.alert(
+      "Confirm Cash Collected",
+      `Mark this request as paid in cash?\n\nBuyer: ${request?.buyerName || "Buyer"}\nOffer: ${formatCurrency(request?.negotiatedPrice)}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              setConfirmingCodId(request.id);
+              await api.confirmMarketplaceCodCollected(request.id);
+              await loadPost();
+            } catch (err) {
+              setError(err.message || "Could not confirm COD payment");
+            } finally {
+              setConfirmingCodId("");
+            }
+          },
+        },
+      ]
+    );
   }
 
   function confirmDelete() {
@@ -146,10 +200,48 @@ export default function MarketplaceSellerDetailScreen({ navigation, route }) {
                     <Text style={styles.messageName}>{request.buyerName || "Buyer"}</Text>
                     <Text style={styles.messageMeta}>{request.buyerContact || request.buyerEmail || "Contact hidden until accepted"}</Text>
                   </View>
-                  <Text style={styles.messageMeta}>{formatMarketplaceTime(request.updatedAt || request.createdAt)}</Text>
+                  <View style={styles.requestRightCol}>
+                    <RequestDecisionBadge status={request.status} />
+                    <Text style={styles.messageMeta}>{formatMarketplaceTime(request.updatedAt || request.createdAt)}</Text>
+                  </View>
                 </View>
                 <Text style={styles.offerText}>Offer: {formatCurrency(request.negotiatedPrice)}</Text>
+                <Text style={styles.messageMeta}>Payment: {request?.paymentMethod || "-"} / {request?.paymentStatus || "unpaid"}</Text>
                 <Text style={styles.body}>{request.message || "No message body"}</Text>
+
+                <View style={styles.requestActionRow}>
+                  <Pressable
+                    style={[
+                      styles.acceptBtn,
+                      (decisionId === request.id || String(request?.status || "PENDING").toUpperCase() !== "PENDING") && styles.btnDisabled,
+                    ]}
+                    onPress={() => handleDecision(request.id, "ACCEPTED")}
+                    disabled={decisionId === request.id || String(request?.status || "PENDING").toUpperCase() !== "PENDING"}
+                  >
+                    <Text style={styles.acceptBtnText}>{decisionId === request.id ? "Saving..." : "Accept"}</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[
+                      styles.declineBtn,
+                      (decisionId === request.id || String(request?.status || "PENDING").toUpperCase() !== "PENDING") && styles.btnDisabled,
+                    ]}
+                    onPress={() => handleDecision(request.id, "DECLINED")}
+                    disabled={decisionId === request.id || String(request?.status || "PENDING").toUpperCase() !== "PENDING"}
+                  >
+                    <Text style={styles.declineBtnText}>Decline</Text>
+                  </Pressable>
+                  {String(request?.status || "").toUpperCase() === "ACCEPTED"
+                  && String(request?.paymentMethod || "") === "cod"
+                  && String(request?.paymentStatus || "") === "cod_pending" ? (
+                    <Pressable
+                      style={[styles.codBtn, confirmingCodId === request.id && styles.btnDisabled]}
+                      onPress={() => handleConfirmCod(request)}
+                      disabled={confirmingCodId === request.id}
+                    >
+                      <Text style={styles.codBtnText}>{confirmingCodId === request.id ? "Saving..." : "Confirm COD"}</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
             ))}
           </View>
@@ -297,6 +389,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 10,
   },
+  requestRightCol: {
+    alignItems: "flex-end",
+    gap: 6,
+  },
   messageName: {
     color: theme.colors.text,
     fontWeight: "900",
@@ -305,8 +401,56 @@ const styles = StyleSheet.create({
     color: theme.colors.textMuted,
     fontSize: 12,
   },
+  decisionBadge: {
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  decisionBadgeText: {
+    fontWeight: "900",
+    fontSize: 12,
+  },
   muted: {
     color: theme.colors.textMuted,
+  },
+  requestActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 2,
+  },
+  acceptBtn: {
+    backgroundColor: theme.colors.successBg,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  acceptBtnText: {
+    color: theme.colors.successText,
+    fontWeight: "800",
+  },
+  declineBtn: {
+    backgroundColor: "#ffe2df",
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  declineBtnText: {
+    color: theme.colors.danger,
+    fontWeight: "800",
+  },
+  codBtn: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+  },
+  codBtnText: {
+    color: "#ffffff",
+    fontWeight: "800",
+  },
+  btnDisabled: {
+    opacity: 0.7,
   },
   error: {
     color: theme.colors.danger,
