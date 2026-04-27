@@ -35,8 +35,6 @@ function normalizePhotos(photos) {
 function isValidPhoneNumber(value) {
   const text = String(value || "").trim();
   const digits = text.replace(/\D/g, "");
-  // Keep client validation aligned with server:
-  // Sri Lankan 10-digit mobile format: 07XXXXXXXX.
   return /^[0-9+()\-\s]+$/.test(text)
     && digits.length >= PHONE_MIN_DIGITS
     && digits.length <= PHONE_MAX_DIGITS

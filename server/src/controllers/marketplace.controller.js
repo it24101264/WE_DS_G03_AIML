@@ -278,13 +278,12 @@ function isWithinRequestUpdateWindow(createdAt) {
   return elapsed >= 0 && elapsed <= windowMs;
 }
 
-// ── Check if payment window (2 hours after pickup time) has expired ─────────────
 function isPaymentWindowExpired(pickupDateTime) {
   if (!pickupDateTime) return false;
   try {
     const pickupTime = new Date(pickupDateTime).getTime();
     if (!Number.isFinite(pickupTime)) return false;
-    const PAYMENT_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+    const PAYMENT_WINDOW_MS = 2 * 60 * 60 * 1000; 
     const deadlineTime = pickupTime + PAYMENT_WINDOW_MS;
     return Date.now() > deadlineTime;
   } catch (e) {
@@ -293,10 +292,8 @@ function isPaymentWindowExpired(pickupDateTime) {
   }
 }
 
-// ── Auto-revert expired accepted requests (payment not received) ───────────────
 async function revertExpiredRequests() {
   try {
-    // Find all ACCEPTED requests where payment is unpaid and window expired
     const expiredRequests = await MarketplaceRequest.find({
       status: "ACCEPTED",
       paymentStatus: { $in: ["unpaid", "pending"] },
@@ -305,19 +302,17 @@ async function revertExpiredRequests() {
 
     const toRevert = expiredRequests.filter((req) => isPaymentWindowExpired(req.pickupDateTime));
 
-    if (toRevert.length === 0) return; // No expired requests
+    if (toRevert.length === 0) return;
 
     console.log(`[REVERT] Found ${toRevert.length} expired accepted requests to revert`);
 
     for (const request of toRevert) {
       try {
-        // Revert request status back to PENDING
         await MarketplaceRequest.updateOne(
           { id: request.id },
           { $set: { status: "PENDING", decidedAt: null } }
         );
 
-        // Make the post ACTIVE again
         await MarketplacePost.updateOne(
           { id: request.postId },
           { $set: { status: "ACTIVE" } }
